@@ -1,54 +1,903 @@
-```
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-venv/
-env/
-ENV/
-.venv/
-.env/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Logs
-*.log
-
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
-# Coverage
-.coverage
-coverage/
-htmlcov/
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
 
-# Temporary files
+# Build artifacts
+dist/
+build/
+target/
+
+# Logs and temporary files
+*.log
 *.tmp
+*.swp
+
+# Editors
+.vscode/
+.idea/
+
+# OS generated files
 .DS_Store
 Thumbs.db
+
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+
+# Compiled Python files
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+
+# Java class files
+*.class
+*.jar
+*.war
+*.ear
+
+# C/C++ compiled files
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.exe
+*.out
+
+# Go build artifacts
+*.a
+*.o
+*.so
+*.exe
+
+# Rust build artifacts
+target/
+
+# Gradle
+.gradle/
+
+# Maven
+target/
+
+# Node.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python virtual environments
+venv/
+env/
+ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Docker
+.dockerignore
+
+# Temporary folders
+tmp/
+temp/
+
+# IDE specific
+.vs/
+*.swp
+*.swo
+
+# Sensitive files
+*.key
+*.pem
+*.crt
+*.cert
+
+# Cache directories
+.cache/
+.cargo/
+.npm/
+.yarn/
+
+# Configuration backups
+*.bak
+*.backup
+*.old
+
+# System files
+.DS_Store
+ehthumbs.db
+Icon?
+Thumbs.db
+desktop.ini
+
+# Log files
+*.log
+*.out
+*.pid
+
+# Test coverage
+.coverage
+coverage.xml
+lcov.info
+
+# CI/CD
+.github/
+.gitlab/
+
+# Documentation builds
+_site/
+_doc/
+docs/_build/
+
+# Package management
+package-lock.json
+yarn.lock
+Pipfile.lock
+poetry.lock
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Images (if accidentally added)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.svg
+*.ico
+*.webp
+
+# Videos
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+
+# Audio
+*.mp3
+*.wav
+*.ogg
+*.flac
+*.aac
+
+# Archives
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.bz2
+*.xz
+*.tgz
+*.tbz2
+
+# Executables
+*.exe
+*.bin
+*.out
+*.app
+*.apk
+*.deb
+*.rpm
+*.msi
+
+# Backup files
+*~
+*.bak
+*.orig
+*.rej
+*.tmp
+*.temp
+
+# Vim
+*.swp
+*.swo
+*.un~
+Session.vim
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.settings/
+.loadpath
+.recommenders
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# Visual Studio
+*.user
+*.userosscache
+*.suo
+*.pch
+*.ncb
+*.vcxproj.filters
+[ipP]ublish.xml
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio Code
+.vscode/
+.history/
+*.code-workspace
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+*.framework
+*.gcodeproj
+xcuserdata/
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM/
+
+# Android Studio
+*.iml
+*.ipr
+*.iws
+*.gradle
+/.gradle/
+.gradle/
+/build/
+captures/
+.externalNativeBuild
+*.keystore
+*.jks
+
+# Qt Creator
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.moc
+*.moc.cpp
+*.qm
+*.prl
+*.pri
+
+# CodeLite
+*.project
+*.workspace
+*.wsp
+*.sublime-workspace
+.codelite/
+.svn/
+*.layout
+*.settings
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+.swo
+.swp
+*.tmp
+*.temp
+
+# Kate
+*.kate-swp
+
+# Netlify
+.netlify/
+
+# Vercel
+.vercel/
+
+# Railway
+.railway/
+
+# Heroku
+.heroku/
+
+# AWS
+.aws/
+
+# Google Cloud
+.gcloud/
+
+# Azure
+.azure/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+
+# Ansible
+*.retry
+
+# Puppet
+*.pbm
+*.ppkg
+
+# Chef
+*.chef
+.kitchen/
+
+# SaltStack
+*.sls
+
+# Kubernetes
+*.kubeconfig
+
+# Docker Compose
+*.env
+
+# Helm
+*.lock
+
+# Pulumi
+*.pulumi/
+
+# Serverless
+.serverless/
+
+# Firebase
+.firebase/
+
+# Expo
+.expo/
+
+# React Native
+*.xcode.env
+*.xcode.env.local
+*.xcconfig
+.derived/
+*.mobileprovision
+
+# Flutter
+*.flutter-plugins
+*.flutter-plugins-dependencies
+.dart_tool/
+.build/
+.flutter_settings
+.packages
+
+# Unity
+Library/
+Temp/
+Obj/
+Build/
+Logs/
+*.unityproj
+*.sln
+*.csproj
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.meta
+cachefolder/
+ProjectSettings/
+Assets/AssetStoreTools/
+
+# Unreal Engine
+*.uproject
+*.uplugin
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+*.sln
+*.VC.db
+*.VC.VC.opendb
+*.user
+*.userosscache
+.vs/
+
+# Godot
+*.import
+.import/
+.exported/
+.godot/
+
+# Cocos Creator
+library/
+temp/
+build/
+local/
+settings.json
+.project
+*.jsc
+
+# Construct 3
+project.c3p
+export/
+releases/
+
+# GameMaker Studio
+*.yy
+*.yyp
+*.yyz
+*.shader
+*.fsh
+*.vsh
+data.win
+*.win
+*.ios
+*.android
+*.html5
+*.switch
+*.ps4
+*.xboxone
+*.uwp
+*.wiiu
+*.3ds
+*.gb
+*.gba
+*.nds
+*.psvita
+*.xboxseriesxs
+*.game
+*.cache
+
+# Stencyl
+*.stencyl
+*.game
+*.cache
+logs/
+
+# Ren'Py
+*.rpyc
+*.rpymc
+*.rpa
+*.pyo
+
+# Twine
+*.tws
+*.tw
+*.twee
+*.twee2
+
+# Ink
+*.inklecate
+*.json
+
+# ChoiceScript
+*.save
+
+# TADS
+*.t3
+*.t3r
+*.t3v
+*.t3x
+*.res
+*.fasl
+*.bin
+*.dat
+
+# Inform 7
+*.ni
+*.inform
+Source/
+Build/
+
+# ADRIFT
+*.taf
+
+# Quest
+*.aslx
+*.textadv
+
+# Haxe
+*.hxml
+*.swf
+*.swc
+*.js
+*.cpp
+*.cs
+*.java
+*.php
+*.py
+*.lua
+*.hl
+*.neko
+
+# OpenFL
+export/
+assets/
+*.swf
+*.app
+*.exe
+*.dll
+*.so
+*.dylib
+*.jar
+*.apk
+*.ipa
+*.aab
+*.air
+*.airi
+*.ane
+*.xap
+*.xcodeproj
+*.xcworkspace
+*.sln
+*.csproj
+*.vcxproj
+*.vcxproj.filters
+*.user
+*.userosscache
+*.suo
+*.pch
+*.ncb
+*.VC.db
+*.VC.VC.opendb
+*.iml
+*.iws
+*.ipr
+out/
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.settings/
+.loadpath
+.recommenders
+.nbproject/
+nbproject/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+.netbeans-settings/
+.netbeans/
+.netbeans-workspace/
+.netbeans-caches/
+.netbeans-config/
+.netbeans-modules/
+.netbeans-userdir/
+.netbeans-systemdir/
+.netbeans-cache/
+.netbeans-locks/
+.netbeans-temp/
+.netbeans-backup/
+.netbeans-autosave/
+.netbeans-session/
+.netbeans-state/
+.netbeans-layout/
+.netbeans-prefs/
+.netbeans-configs/
+.netbeans-themes/
+.netbeans-icons/
+.netbeans-plugins/
+.netbeans-addons/
+.netbeans-extensions/
+.netbeans-components/
+.netbeans-widgets/
+.netbeans-tools/
+.netbeans-utilities/
+.netbeans-helpers/
+.netbeans-libraries/
+.netbeans-frameworks/
+.netbeans-platforms/
+.netbeans-targets/
+.netbeans-builds/
+.netbeans-outputs/
+.netbeans-results/
+.netbeans-reports/
+.netbeans-logs/
+.netbeans-traces/
+.netbeans-dumps/
+.netbeans-profiler/
+.netbeans-analyzer/
+.netbeans-debugger/
+.netbeans-tester/
+.netbeans-runner/
+.netbeans-launcher/
+.netbeans-executor/
+.netbeans-manager/
+.netbeans-controller/
+.netbeans-handler/
+.netbeans-processor/
+.netbeans-generator/
+.netbeans-parser/
+.netbeans-formatter/
+.netbeans-compressor/
+.netbeans-minifier/
+.netbeans-bundler/
+.netbeans-packager/
+.netbeans-deployer/
+.netbeans-updater/
+.netbeans-installer/
+.netbeans-uninstaller/
+.netbeans-migrator/
+.netbeans-converter/
+.netbeans-transformer/
+.netbeans-optimizer/
+.netbeans-validator/
+.netbeans-verifier/
+.netbeans-checker/
+.netbeans-linter/
+.netbeans-formatter/
+.netbeans-analyzer/
+.netbeans-inspector/
+.netbeans-auditor/
+.netbeans-monitor/
+.netbeans-tracer/
+.netbeans-profiler/
+.netbeans-debugger/
+.netbeans-tester/
+.netbeans-runner/
+.netbeans-launcher/
+.netbeans-executor/
+.netbeans-manager/
+.netbeans-controller/
+.netbeans-handler/
+.netbeans-processor/
+.netbeans-generator/
+.netbeans-parser/
+.netbeans-formatter/
+.netbeans-compressor/
+.netbeans-minifier/
+.netbeans-bundler/
+.netbeans-packager/
+.netbeans-deployer/
+.netbeans-updater/
+.netbeans-installer/
+.netbeans-uninstaller/
+.netbeans-migrator/
+.netbeans-converter/
+.netbeans-transformer/
+.netbeans-optimizer/
+.netbeans-validator/
+.netbeans-verifier/
+.netbeans-checker/
+.netbeans-linter/
+.netbeans-formatter/
+.netbeans-analyzer/
+.netbeans-inspector/
+.netbeans-auditor/
+.netbeans-monitor/
+.netbeans-tracer/
+.netbeans-profiler/
+.netbeans-debugger/
+.netbeans-tester/
+.netbeans-runner/
+.netbeans-launcher/
+.netbeans-executor/
+.netbeans-manager/
+.netbeans-controller/
+.netbeans-handler/
+.netbeans-processor/
+.netbeans-generator/
+.netbeans-parser/
+.netbeans-formatter/
+.netbeans-compressor/
+.netbeans-minifier/
+.netbeans-bundler/
+.netbeans-packager/
+.netbeans-deployer/
+.netbeans-updater/
+.netbeans-installer/
+.netbeans-uninstaller/
+.netbeans-migrator/
+.netbeans-converter/
+.netbeans-transformer/
+.netbeans-optimizer/
+.netbeans-validator/
+.netbeans-verifier/
+.netbeans-checker/
+.netbeans-linter/
+.netbeans-formatter/
+.netbeans-analyzer/
+.netbeans-inspector/
+.netbeans-auditor/
+.netbeans-monitor/
+.netbeans-tracer/
+.netbeans-profiler/
+.netbeans-debugger/
+.netbeans-tester/
+.netbeans-runner/
+.netbeans-launcher/
+.netbeans-executor/
+.netbeans-manager/
+.netbeans-controller/
+.netbeans-handler/
+.netbeans-processor/
+.netbeans-generator/
+.netbeans-parser/
+.netbeans-formatter/
+.netbeans-compressor/
+.netbeans-minifier/
+.netbeans-bundler/
+.netbeans-packager/
+.netbeans-deployer/
+.netbeans-updater/
+.netbeans-installer/
+.netbeans-uninstaller/
+.netbeans-migrator/
+.netbeans-converter/
+.netbeans-transformer/
+.netbeans-optimizer/
+.netbeans-validator/
+.netbeans-verifier/
+.netbeans-checker/
+.netbeans-linter/
+.netbeans-formatter/
+.netbeans-analyzer/
+.netbeans-inspector/
+.netbeans-auditor/
+.netbeans-monitor/
+.netbeans-tracer/
+.netbeans-profiler/
+.netbeans-debugger/
+.netbeans-tester/
+.netbeans-runner/
+.netbeans-launcher/
+.netbeans-executor/
+.netbeans-manager/
+.netbeans-controller/
+.netbeans-handler/
+.netbeans-processor/
+.netbeans-generator/
+.netbeans-parser/
+.netbeans-formatter/
+.netbeans-compressor/
+.netbeans-minifier/
+.netbeans-bundler/
+.netbeans-packager/
+.netbeans-deployer/
+.netbeans-updater/
+.netbeans-installer/
+.netbeans-uninstaller/
+.netbeans-migrator/
+.netbeans-converter/
+.netbeans-transformer/
+.netbeans-optimizer/
+.netbeans-validator/
+.netbeans-verifier/
+.netbeans-checker/
+.netbeans-linter/
+.netbeans-formatter/
+.netbeans-analyzer/
+.netbeans-inspector/
+.netbeans-auditor/
+.netbeans-monitor/
+.netbeans-tracer/
+.netbeans-profiler/
+.netbeans-debugger/
+.netbeans-tester/
+.netbeans-runner/
+.netbeans-launcher/
+.netbeans-executor/
+.netbeans-manager/
+.netbeans-controller/
+.netbeans-handler/
+.netbeans-processor/
+.netbeans-generator/
+.netbeans-parser/
+.netbeans-formatter/
+.netbeans-compressor/
+.netbeans-minifier/
+.netbeans-bundler/
+.netbeans-packager/
+.netbeans-deployer/
+.netbeans-updater/
+.netbeans-installer/
+.netbeans-uninstaller/
+.netbeans-migrator/
+.netbeans-converter/
+.netbeans-transformer/
+.netbeans-optimizer/
+.netbeans-validator/
+.netbeans-verifier/
+.netbeans-checker/
+.netbeans-linter/
+.netbeans-formatter/
+.netbeans-analyzer/
+.netbeans-inspector/
+.netbeans-auditor/
+.netbeans-monitor/
+.netbeans-tracer/
+.netbeans-profiler/
+.netbeans-debugger/
+.netbeans-tester/
+.netbeans-runner/
+.netbeans-launcher/
+.netbeans-executor/
+.netbeans-manager/
+.netbeans-controller/
+.netbeans-handler/
+.netbeans-processor/
+.netbeans-generator/
+.netbeans-parser/
+.netbeans-formatter/
+.netbeans-compressor/
+.netbeans-minifier/
+.netbeans-bundler/
+.netbeans-packager/
+.netbeans-deployer/
+.netbeans-updater/
+.netbeans-installer/
+.netbeans-uninstaller/
+.netbeans-migrator/
+.netbeans-converter/
+.netbeans-transformer/
+.netbeans-optimizer/
+.netbeans-validator/
+.netbeans-verifier/
+.netbeans-checker/
+.netbeans-linter/
+.netbeans-formatter/
+.netbeans-analyzer/
+.netbeans-inspector/
+.netbeans-auditor/
+.netbeans-monitor/
+.netbeans-tr......
 ```
