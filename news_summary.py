@@ -14,7 +14,7 @@ from pathlib import Path
 
 import feedparser
 import requests
-from google import genai
+from google.genai import client
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 import asyncio
 
@@ -122,7 +122,7 @@ def generate_summary_with_gemini(title, content, author="", source_url=""):
     
     try:
         # Initialize client dengan SDK baru
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        genai_client = client.Client(api_key=GEMINI_API_KEY)
         
         # Gunakan model gemini-flash-lite-latest (model terbaru yang lebih efisien)
         model_name = "gemini-flash-lite-latest"
@@ -162,7 +162,7 @@ def generate_summary_with_gemini(title, content, author="", source_url=""):
 Generate the summary now following the exact structure above. Ensure the source link at the end uses the Source URL provided."""
         
         # Generate content dengan SDK baru
-        response = client.models.generate_content(
+        response = genai_client.models.generate_content(
             model=model_name,
             contents=prompt
         )
