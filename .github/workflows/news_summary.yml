@@ -42,7 +42,8 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          RSS_FEED_URL: ${{ secrets.RSS_FEED_URL }}
+          RSS_FEED_URLS: ${{ secrets.RSS_FEED_URLS }}  # Comma-separated list of RSS feeds
+          RSS_FEED_URL: ${{ secrets.RSS_FEED_URL }}  # Fallback for single feed (deprecated)
           USE_GOOGLE_SHEETS: ${{ secrets.USE_GOOGLE_SHEETS || 'false' }}
           GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
           GOOGLE_SERVICE_ACCOUNT_FILE: service_account.json

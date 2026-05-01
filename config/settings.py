@@ -5,6 +5,7 @@ Centralized configuration management using environment variables
 
 import os
 from pathlib import Path
+from typing import List
 
 
 # ==================== TELEGRAM CONFIGURATION ====================
@@ -29,7 +30,30 @@ FREE_TIER_MODELS = [
 
 
 # ==================== RSS FEED CONFIGURATION ====================
-RSS_FEED_URL = os.getenv("RSS_FEED_URL")
+# Support single or multiple RSS feeds (comma-separated)
+RSS_FEED_URLS = os.getenv("RSS_FEED_URLS", "")  # Comma-separated list
+RSS_FEED_URL = os.getenv("RSS_FEED_URL")  # Deprecated: kept for backward compatibility
+
+
+def get_rss_feed_urls() -> List[str]:
+    """
+    Get list of RSS feed URLs from environment variables.
+    
+    Returns:
+        List of RSS feed URLs. Falls back to single RSS_FEED_URL if RSS_FEED_URLS not set.
+    """
+    # Try new multi-feed variable first
+    if RSS_FEED_URLS:
+        # Split by comma and strip whitespace
+        urls = [url.strip() for url in RSS_FEED_URLS.split(",") if url.strip()]
+        if urls:
+            return urls
+    
+    # Fallback to legacy single URL
+    if RSS_FEED_URL:
+        return [RSS_FEED_URL]
+    
+    return []
 
 
 # ==================== STORAGE CONFIGURATION ====================
@@ -62,16 +86,22 @@ def get_service_account_path():
 
 def validate_config():
     """Validate required configuration."""
+    # Get RSS URLs using the new helper function
+    rss_urls = get_rss_feed_urls()
+    
     required_vars = {
         "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
         "GEMINI_API_KEY": GEMINI_API_KEY,
-        "RSS_FEED_URL": RSS_FEED_URL,
     }
     
     missing = [var for var, value in required_vars.items() if not value]
     
     if missing:
         raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+    
+    # Validate at least one RSS feed is provided
+    if not rss_urls:
+        raise ValueError("At least one RSS feed URL must be provided (RSS_FEED_URLS or RSS_FEED_URL)")
     
     if USE_GOOGLE_SHEETS and not GOOGLE_SHEETS_ID:
         raise ValueError("GOOGLE_SHEETS_ID is required when USE_GOOGLE_SHEETS is true")
