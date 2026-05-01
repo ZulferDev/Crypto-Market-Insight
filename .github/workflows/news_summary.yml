@@ -35,7 +35,7 @@ jobs:
 
       - name: Setup Service Account (if using Google Sheets)
         run: |
-          echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" > service_account.json
+          echo `${{ secrets.SERVICE_ACCOUNT_JSON }}` > service_account.json
 
       - name: Run news summary script
         env:
