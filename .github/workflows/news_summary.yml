@@ -34,7 +34,6 @@ jobs:
           pip install -r requirements.txt
 
       - name: Setup Service Account (if using Google Sheets)
-        if: env.USE_GOOGLE_SHEETS == 'true'
         run: |
           echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" > service_account.json
 
