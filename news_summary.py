@@ -153,8 +153,8 @@ def generate_summary_with_gemini(title, content, author="", source_url=""):
             # Initialize client dengan SDK baru
             genai_client = client.Client(api_key=GEMINI_API_KEY)
             
-            # Gunakan model gemini-flash-lite-latest (model terbaru yang lebih efisien)
-            model_name = "gemini-flash-lite-latest"
+            # Gunakan model gemini-3.1-flash-lite-preview (model terbaru yang lebih efisien)
+            model_name = "gemini-3.1-flash-lite-preview"
             
             system_instruction = """**Role:** Senior Crypto Analyst for "Crypto Market Insight" Telegram channel.
 
