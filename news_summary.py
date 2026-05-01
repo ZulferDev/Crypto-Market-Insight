@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 AI News Summary to Telegram
-Workflow: RSS Feed → Jina Reader → Gemini AI → Telegram Channel
+Workflow: RSS Feed → Crawl4AI → Gemini AI → Telegram Channel
 """
 
 import os
@@ -15,6 +15,8 @@ from pathlib import Path
 import feedparser
 import requests
 import google.generativeai as genai
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
+import asyncio
 
 
 # ==================== CONFIGURATION ====================
@@ -29,8 +31,8 @@ PROCESSED_LINKS_FILE = os.getenv("PROCESSED_LINKS_FILE", "processed_links.txt")
 MAX_ARTICLES_PER_RUN = int(os.getenv("MAX_ARTICLES_PER_RUN", "5"))
 SUMMARY_MAX_LENGTH = int(os.getenv("SUMMARY_MAX_LENGTH", "1500"))  # Karakter max untuk Telegram
 
-# Jina Reader endpoint
-JINA_READER_URL = "https://r.jina.ai/"
+# Crawl4AI configuration
+CRAWL_CACHE_DIR = os.getenv("CRAWL_CACHE_DIR", "./crawl_cache")
 
 # ==================== HELPER FUNCTIONS ====================
 
@@ -73,31 +75,45 @@ def fetch_rss_feed(url):
     return articles
 
 
-def extract_content_with_jina(url):
-    """Gunakan Jina Reader untuk extract content dari URL ke Markdown."""
-    print(f"📖 Extracting content with Jina Reader: {url}")
+async def extract_content_with_crawl4ai(url):
+    """Gunakan Crawl4AI untuk extract content dari URL ke Markdown."""
+    print(f"🕷️ Extracting content with Crawl4AI: {url}")
     
     try:
-        response = requests.get(
-            f"{JINA_READER_URL}{url}",
-            headers={
-                'X-With-Generated-Alt': 'true',  # Generate alt text untuk gambar
-                'X-With-Links-Summary': 'true',  # Include link summary
-            },
-            timeout=30
+        # Konfigurasi browser dan crawler
+        browser_config = BrowserConfig(
+            headless=True,
+            verbose=False
         )
         
-        if response.status_code == 200:
-            content = response.text
-            print(f"✅ Successfully extracted {len(content)} characters")
-            return content
-        else:
-            print(f"❌ Jina Reader error: {response.status_code}")
-            return None
+        crawl_config = CrawlerRunConfig(
+            cache_mode="bypass",  # Selalu fetch fresh content
+            excluded_tags=['nav', 'footer', 'header', 'aside'],
+            remove_overlay_elements=True,
+            wait_for='body'
+        )
+        
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            result = await crawler.arun(url=url, config=crawl_config)
             
+            if result.success:
+                # Ambil markdown content
+                content = result.markdown or result.html
+                content_length = len(content) if content else 0
+                print(f"✅ Successfully extracted {content_length} characters")
+                return content
+            else:
+                print(f"❌ Crawl4AI error: {result.error_message if hasattr(result, 'error_message') else 'Unknown error'}")
+                return None
+                
     except Exception as e:
-        print(f"❌ Error fetching from Jina Reader: {str(e)}")
+        print(f"❌ Error fetching with Crawl4AI: {str(e)}")
         return None
+
+
+def extract_content_with_jina(url):
+    """Wrapper sync untuk Crawl4AI (untuk kompatibilitas)."""
+    return asyncio.run(extract_content_with_crawl4ai(url))
 
 
 def generate_summary_with_gemini(title, content, author=""):
@@ -242,7 +258,7 @@ def main():
             print("⚠️ Skipping: No link available")
             continue
         
-        # Extract content dengan Jina Reader
+        # Extract content dengan Crawl4AI
         content = extract_content_with_jina(article['link'])
         
         if not content:
