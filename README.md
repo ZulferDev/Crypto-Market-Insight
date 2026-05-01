@@ -1,193 +1,216 @@
 # AI News Summary to Telegram
 
-Automated workflow yang mengambil berita dari RSS Feed, membuat ringkasan AI dengan Google Gemini, dan mengirimkannya ke Telegram Channel.
+Workflow otomatis untuk mengambil berita dari RSS feed, mengekstrak konten dengan **Crawl4AI**, membuat ringkasan AI dengan **Google Gemini**, dan mengirim ke **Telegram Channel**.
 
-## 🚀 Alur Workflow
+## 🚀 Fitur
 
-```
-RSS Feed → Jina Reader (Extract Content) → Gemini AI (Summary) → Telegram Channel
-```
+- ✅ **RSS Feed Parser** - Monitor sumber berita favorit Anda
+- ✅ **Crawl4AI Web Scraper** - Ekstraksi konten lengkap dari artikel (menggantikan Jina Reader)
+- ✅ **Google Gemini AI** - Ringkasan cerdas dalam bahasa Indonesia
+- ✅ **Telegram Integration** - Kirim otomatis ke channel Telegram
+- ✅ **Deduplikasi** - Skip artikel yang sudah diproses
+- ✅ **Rate Limiting** - Hindari API limits
+- ✅ **Scheduled & Manual Trigger** - Jalankan otomatis atau manual
 
-## 📋 Prerequisites
+## 💰 Biaya: **GRATIS (Rp 0,-)**
 
-1. **GitHub Account** - Untuk menjalankan GitHub Actions
-2. **Telegram Bot** - Bot untuk mengirim pesan ke channel
-3. **Google Gemini API Key** - Untuk generate summary
-4. **RSS Feed URL** - Sumber berita
+| Service | Limit Gratis | Cukup Untuk |
+|---------|--------------|-------------|
+| GitHub Actions | 2000 menit/bulan | ~60-100 run/hari |
+| Google Gemini API | 1.5M tokens/hari | ~300-500 artikel/hari |
+| Crawl4AI | Unlimited (self-hosted) | Semua kebutuhan |
+| Telegram Bot | Unlimited | Semua kebutuhan |
 
-## 🔧 Setup Langkah-demi-Langkah
+## 📋 Prasyarat
 
-### 1. Buat Telegram Bot
+1. **GitHub Account** - Untuk hosting repository dan GitHub Actions
+2. **Telegram Bot Token** - Dari [@BotFather](https://t.me/BotFather)
+3. **Telegram Channel ID** - Channel tempat mengirim summary
+4. **Google Gemini API Key** - Dari [Google AI Studio](https://aistudio.google.com/app/apikey)
+5. **RSS Feed URL** - Sumber berita yang ingin dimonitor
 
-1. Buka Telegram dan cari `@BotFather`
-2. Kirim perintah `/newbot`
-3. Ikuti instruksi untuk membuat bot
-4. Simpan **Bot Token** yang diberikan
+## 🔧 Setup Langkah demi Langkah
 
-### 2. Buat Telegram Channel
-
-1. Buat channel baru di Telegram
-2. Invite bot Anda ke channel sebagai **Admin**
-3. Dapatkan **Channel ID**:
-   - Untuk public channel: `@nama_channel`
-   - Untuk private channel: Forward pesan dari channel ke `@userinfobot` atau gunakan `@getmyid_bot`
-   - Format ID: `-100xxxxxxxxxx`
-
-### 3. Dapatkan Google Gemini API Key
-
-1. Kunjungi [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Login dengan akun Google
-3. Klik **Create API Key**
-4. Simpan API key Anda
-
-**Free Tier:** 1.5 juta tokens/hari (cukup untuk ~300-500 artikel/hari)
-
-### 4. Setup GitHub Repository
+### 1. Fork/Clone Repository
 
 ```bash
-# Clone repository ini
-git clone https://github.com/username-anda/repo-anda.git
-cd repo-anda
-
-# Atau push kode yang sudah ada
-git init
-git add .
-git commit -m "Initial commit: AI News Summary workflow"
-git branch -M main
-git remote add origin https://github.com/username-anda/repo-anda.git
-git push -u origin main
+git clone https://github.com/YOUR_USERNAME/news-summary-telegram.git
+cd news-summary-telegram
 ```
 
-### 5. Konfigurasi GitHub Secrets
+### 2. Buat Telegram Bot
 
-Di GitHub repository Anda:
+1. Chat dengan [@BotFather](https://t.me/BotFather) di Telegram
+2. Kirim `/newbot` dan ikuti instruksi
+3. Simpan **BOT TOKEN** yang diberikan
+4. Buat channel Telegram (atau gunakan yang sudah ada)
+5. Invite bot ke channel sebagai **Admin**
+6. Dapatkan **Channel ID** (format: `@channelname` atau `-100xxxxxxxxxx`)
+   - Cara dapatkan ID: Forward pesan dari channel ke [@userinfobot](https://t.me/userinfobot)
 
-1. Pergi ke **Settings** → **Secrets and variables** → **Actions**
-2. Klik **New repository secret**
-3. Tambahkan secrets berikut:
+### 3. Dapatkan Gemini API Key
+
+1. Buka [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Login dengan akun Google
+3. Klik **Create API Key**
+4. Simpan API key
+
+### 4. Setup GitHub Secrets
+
+1. Buka repository GitHub Anda
+2. Go to **Settings** → **Secrets and variables** → **Actions**
+3. Klik **New repository secret** dan tambahkan:
 
 | Secret Name | Value | Contoh |
 |-------------|-------|--------|
-| `TELEGRAM_BOT_TOKEN` | Token dari BotFather | `123456789:ABCdefGHIjklMNOpqrsTUVwxyz` |
-| `TELEGRAM_CHANNEL_ID` | Channel ID | `-1001234567890` atau `@mychannel` |
+| `TELEGRAM_BOT_TOKEN` | Token dari BotFather | `1234567890:ABCdefGHIjklMNOpqrsTUVwxyz` |
+| `TELEGRAM_CHANNEL_ID` | Channel ID | `@mynewschannel` atau `-1001234567890` |
 | `GEMINI_API_KEY` | API Key dari Google AI Studio | `AIzaSy...` |
-| `RSS_FEED_URL` | URL RSS feed berita | `https://kompas.id/rss` |
+| `RSS_FEED_URL` | URL RSS feed berita | `https://kompas.com/rss` |
 
-### 6. (Optional) Sesuaikan Konfigurasi
+### 5. Aktifkan GitHub Actions
+
+1. Go to **Actions** tab di repository GitHub
+2. Klik **I understand my workflows, go ahead and enable workflows**
+3. Workflow akan berjalan otomatis setiap 30 menit
+
+### 6. Test Manual (Optional)
+
+1. Go to **Actions** → **AI News Summary to Telegram**
+2. Klik **Run workflow**
+3. Pilih branch `main`
+4. Klik **Run workflow**
+5. Tunggu proses selesai (~1-2 menit)
+
+## ⚙️ Konfigurasi Lanjutan
+
+### Ubah Jadwal Execution
 
 Edit file `.github/workflows/news_summary.yml`:
 
 ```yaml
-# Ubah jadwal eksekusi (cron format)
-schedule:
-  - cron: '*/30 * * * *'  # Setiap 30 menit
-
-# Atau tambahkan environment variables opsional
-env:
-  MAX_ARTICLES_PER_RUN: 5      # Max artikel per eksekusi
-  SUMMARY_MAX_LENGTH: 1500     # Max karakter summary
+on:
+  schedule:
+    # Setiap 30 menit (default)
+    - cron: '*/30 * * * *'
+    
+    # Setiap jam
+    - cron: '0 * * * *'
+    
+    # Setiap hari jam 8 pagi
+    - cron: '0 8 * * *'
 ```
 
-### 7. Enable GitHub Actions
+### Ubah Jumlah Artikel Per Run
 
-1. Pergi ke tab **Actions** di repository
-2. Jika diminta, klik **I understand my workflows, go ahead and enable them**
-3. Workflow akan otomatis jalan sesuai jadwal atau manual trigger
+Tambahkan secret baru atau edit di script:
 
-### 8. Test Manual
-
-1. Di tab **Actions**, pilih workflow **AI News Summary to Telegram**
-2. Klik **Run workflow**
-3. Pilih branch `main`
-4. Klik **Run workflow**
-5. Monitor log eksekusi
-
-## 📊 Monitoring
-
-- **Logs:** Lihat di tab Actions → Workflow run → Job logs
-- **Processed Links:** File `processed_links.txt` akan di-commit otomatis
-- **Telegram:** Cek channel untuk melihat summary yang terkirim
-
-## 🎛️ Kustomisasi Lanjutan
-
-### Multiple RSS Feeds
-
-Edit `news_summary.py` untuk support multiple feeds:
-
-```python
-RSS_FEED_URLS = os.getenv("RSS_FEED_URLS", "").split(",")
-
-for feed_url in RSS_FEED_URLS:
-    articles = fetch_rss_feed(feed_url.strip())
-    # ... process each feed
+```bash
+# Di GitHub Secrets
+MAX_ARTICLES_PER_RUN = 10  # Default: 5
 ```
 
-### Custom Summary Prompt
+### Custom Prompt AI
 
-Edit fungsi `generate_summary_with_gemini()` di `news_summary.py`:
+Edit fungsi `generate_summary_with_gemini()` di `news_summary.py` untuk mengubah format ringkasan.
 
-```python
-prompt = f"""
-[Custom prompt Anda di sini]
-...
-"""
+## 📁 Struktur File
+
+```
+news-summary-telegram/
+├── .github/
+│   └── workflows/
+│       └── news_summary.yml      # GitHub Actions workflow
+├── news_summary.py               # Script utama Python
+├── requirements.txt              # Dependencies Python
+├── processed_links.txt           # (Auto-generated) Track artikel yang sudah diproses
+├── crawl_cache/                  # (Auto-generated) Cache Crawl4AI
+└── README.md                     # Dokumentasi ini
 ```
 
-### Filter Berdasarkan Kategori
+## 🔍 Troubleshooting
 
-Tambahkan filter di `main()`:
+### Workflow Gagal dengan Error "Playwright browser not found"
 
-```python
-# Hanya proses artikel dengan keyword tertentu
-keywords = ['teknologi', 'AI', 'startup']
-filtered_articles = [
-    a for a in new_articles 
-    if any(k.lower() in a['title'].lower() for k in keywords)
-]
+Pastikan langkah install playwright ada di workflow:
+
+```yaml
+- name: Install dependencies
+  run: |
+    pip install crawl4ai playwright
+    playwright install chromium --with-deps
 ```
 
-## ⚠️ Troubleshooting
+### Error "Telegram Bot not authorized"
 
-### Workflow tidak jalan
-- Pastikan Actions enabled di repository
-- Cek schedule cron format di [crontab.guru](https://crontab.guru)
+- Pastikan bot sudah diinvite ke channel sebagai **Admin**
+- Cek Channel ID format (harus benar, bisa coba dengan `@username` atau `-100xxxxx`)
 
-### Error: Missing environment variables
-- Pastikan semua secrets sudah ditambahkan di GitHub Settings
-- Restart workflow setelah menambah secrets
+### Error "Gemini API quota exceeded"
 
-### Error: Telegram message not sent
-- Pastikan bot adalah **Admin** di channel
-- Cek format Channel ID (harus ada `-` untuk numeric ID)
-- Test bot token: `https://api.telegram.org/bot<YOUR_TOKEN>/getMe`
+- Limit gratis: 1.5M tokens/hari (~300-500 artikel)
+- Kurangi `MAX_ARTICLES_PER_RUN` atau tunggu reset besok
 
-### Error: Gemini API quota exceeded
-- Free tier: 1.5M tokens/hari (~300-500 artikel)
-- Kurangi `MAX_ARTICLES_PER_RUN`
-- Upgrade ke paid tier di [Google AI Studio](https://aistudio.google.com)
+### Artikel Ter-duplikasi
 
-### Artikel ter-process berulang
-- Pastikan `processed_links.txt` di-commit dan di-push
-- Jangan hapus file tersebut dari repository
+- File `processed_links.txt` menyimpan history
+- Reset dengan hapus file tersebut atau edit manual
 
-## 💰 Cost Breakdown (100% FREE)
+### Crawl4AI Timeout/Lambat
 
-| Service | Free Tier | Cukup Untuk |
-|---------|-----------|-------------|
-| GitHub Actions | 2000 menit/bulan | ~400-600 runs/bulan |
-| Google Gemini API | 1.5M tokens/hari | ~300-500 artikel/hari |
-| Jina Reader | Unlimited (no API key) | Unlimited |
-| Telegram Bot | Unlimited | Unlimited |
-| **Total** | **Rp 0** | **~15,000 artikel/bulan** |
+- Beberapa website punya anti-bot protection
+- Increase timeout di konfigurasi Crawl4AI
+- Coba website alternatif/source RSS lain
+
+## 🛡️ Best Practices
+
+1. **Rate Limiting**: Jangan set interval terlalu cepat (min 15-30 menit)
+2. **Monitor Usage**: Cek GitHub Actions usage di Settings → Actions
+3. **Backup Secrets**: Simpan secrets di tempat aman (password manager)
+4. **Test Dulu**: Jalankan manual dulu sebelum enable schedule
+5. **Error Handling**: Workflow sudah include error handling, tapi monitor logs secara berkala
+
+## 📊 Estimasi Penggunaan
+
+Dengan konfigurasi default (5 artikel per run, setiap 30 menit):
+
+| Resource | Penggunaan/Hari | Penggunaan/Bulan | Limit Gratis |
+|----------|-----------------|------------------|--------------|
+| GitHub Actions | ~20 menit | ~10 jam | 2000 menit |
+| Gemini Tokens | ~50K tokens | ~1.5M tokens | 1.5M/hari |
+| Artikel Diproses | ~240 artikel | ~7200 artikel | Unlimited |
+
+**Kesimpulan**: Konfigurasi default **100% gratis** dan sustainable!
+
+## 🔄 Update & Maintenance
+
+### Update Script
+
+```bash
+git pull origin main
+# Workflow akan auto-run dengan kode terbaru
+```
+
+### Reset Processed Links
+
+Hapus file `processed_links.txt` di repository untuk memproses ulang semua artikel.
+
+### Change RSS Source
+
+Update secret `RSS_FEED_URL` di GitHub Secrets.
 
 ## 📝 License
 
-MIT License - Feel free to use and modify!
+MIT License - Bebas digunakan untuk personal maupun commercial project.
 
-## 🤝 Contributing
+## 🤝 Kontribusi
 
-Pull requests welcome! Untuk fitur request, silakan buka issue.
+Pull request welcome! Untuk fitur baru atau bug fix.
+
+## 📞 Support
+
+Untuk pertanyaan atau issue, buka **Issues** tab di GitHub repository.
 
 ---
 
-**Happy Automating! 🚀**
+**Dibuat dengan ❤️ menggunakan GitHub Actions, Crawl4AI, Google Gemini, dan Telegram Bot API**
