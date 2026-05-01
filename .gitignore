@@ -1,0 +1,56 @@
+# Documentation
+*.md.bak
+*.markdown.bak
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
+__pycache__/
+*.egg-info/
+.Python
+venv/
+.venv/
+
+# Build artifacts
+build/
+dist/
+*.pyc
+*.class
+*.o
+*.obj
+*.so
+*.dll
+*.exe
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+.directory
+*.DS_Store*
+ehthumbs.db
+Icon?
+apidoc/
+doc/api/
