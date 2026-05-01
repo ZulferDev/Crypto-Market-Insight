@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config.settings import (
-    RSS_FEED_URL,
+    get_rss_feed_urls,
     MAX_ARTICLES_PER_RUN,
     validate_config,
 )
@@ -55,14 +55,30 @@ def main():
     processed_data = storage_service.load_processed_data()
     print(f"📋 Loaded {len(processed_data)} previously processed articles")
 
-    # Fetch RSS feed
-    articles = rss_service.fetch_feed(RSS_FEED_URL)
+    # Get all RSS feed URLs (supports multiple feeds)
+    rss_feed_urls = get_rss_feed_urls()
+    print(f"📡 Configured RSS feeds: {len(rss_feed_urls)}")
+    
+    # Fetch from all RSS feeds
+    all_articles = []
+    for feed_url in rss_feed_urls:
+        print(f"\n{'='*60}")
+        print(f"📰 Processing RSS Feed: {feed_url}")
+        print(f"{'='*60}")
+        articles = rss_service.fetch_feed(feed_url)
+        all_articles.extend(articles)
+    
+    print(f"\n✅ Total articles fetched from all feeds: {len(all_articles)}")
 
-    # Filter new articles
-    new_articles = [
-        article for article in articles
-        if not storage_service.is_processed(article.link, processed_data)
-    ]
+    # Filter new articles (deduplicate by link)
+    seen_links = set()
+    unique_articles = []
+    for article in all_articles:
+        if article.link not in seen_links and not storage_service.is_processed(article.link, processed_data):
+            seen_links.add(article.link)
+            unique_articles.append(article)
+    
+    new_articles = unique_articles
 
     print(f"🆕 Found {len(new_articles)} new articles to process")
 
@@ -151,7 +167,8 @@ def main():
     print("\n" + "=" * 60)
     print("📊 WORKFLOW SUMMARY")
     print("=" * 60)
-    print(f"Total articles in RSS: {len(articles)}")
+    print(f"RSS feeds processed: {len(rss_feed_urls)}")
+    print(f"Total articles fetched: {len(all_articles)}")
     print(f"New articles found: {len(new_articles)}")
     print(f"Articles processed this run: {len(newly_processed)}")
     print(f"Total processed articles stored: {len(processed_data)}")
