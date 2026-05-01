@@ -2,6 +2,7 @@
 """
 AI News Summary to Telegram
 Workflow: RSS Feed → Crawl4AI → Gemini AI → Telegram Channel
+Using google-genai SDK with advanced configuration
 """
 
 import os
@@ -14,7 +15,8 @@ from pathlib import Path
 
 import feedparser
 import requests
-from google.genai import client
+from google import genai
+from google.genai import types
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 import asyncio
 
@@ -142,7 +144,7 @@ def extract_content_with_jina(url):
 
 
 def generate_summary_with_gemini(title, content, author="", source_url=""):
-    """Generate summary menggunakan Google Gemini API dengan SDK google-genai."""
+    """Generate summary menggunakan Google Gemini API dengan SDK google-genai (advanced config)."""
     print(f"🤖 Generating AI summary with Gemini...")
     
     max_retries = 5
@@ -151,7 +153,7 @@ def generate_summary_with_gemini(title, content, author="", source_url=""):
     for attempt in range(1, max_retries + 1):
         try:
             # Initialize client dengan SDK baru
-            genai_client = client.Client(api_key=GEMINI_API_KEY)
+            genai_client = genai.Client(api_key=GEMINI_API_KEY)
             
             # Gunakan model gemini-3.1-flash-lite-preview (model terbaru yang lebih efisien)
             model_name = "gemini-3.1-flash-lite-preview"
@@ -177,9 +179,8 @@ def generate_summary_with_gemini(title, content, author="", source_url=""):
 
 🔗 <b>Source:</b> <a href=""></a>"""
 
-            prompt = f"""{system_instruction}
-
-**News Title:** {title}
+            # Prepare content untuk input
+            user_content = f"""**News Title:** {title}
 **Author:** {author}
 **Source URL:** {source_url}
 
@@ -190,13 +191,53 @@ def generate_summary_with_gemini(title, content, author="", source_url=""):
 
 Generate the summary now following the exact structure above. Ensure the source link at the end uses the Source URL provided."""
             
-            # Generate content dengan SDK baru
-            response = genai_client.models.generate_content(
-                model=model_name,
-                contents=prompt
+            # Konfigurasi generate content dengan advanced settings
+            generate_config = types.GenerateContentConfig(
+                temperature=0.8,
+                thinking_config=types.ThinkingConfig(
+                    thinking_level="MINIMAL",
+                ),
+                response_mime_type="application/json",
+                response_schema=genai.types.Schema(
+                    type=genai.types.Type.OBJECT,
+                    properties={
+                        "response": genai.types.Schema(
+                            type=genai.types.Type.STRING,
+                        ),
+                    },
+                ),
+                system_instruction=[
+                    types.Part.from_text(text=system_instruction),
+                ],
             )
             
-            summary = response.text
+            # Prepare contents
+            contents = [
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(text=user_content),
+                    ],
+                ),
+            ]
+            
+            # Generate content dengan streaming
+            full_response = ""
+            for chunk in genai_client.models.generate_content_stream(
+                model=model_name,
+                contents=contents,
+                config=generate_config,
+            ):
+                if text := chunk.text:
+                    full_response += text
+            
+            # Parse JSON response
+            try:
+                import json as json_lib
+                response_data = json_lib.loads(full_response)
+                summary = response_data.get("response", full_response)
+            except:
+                summary = full_response
             
             # Truncate jika terlalu panjang (strict 1000 chars for Telegram caption)
             if len(summary) > 1000:
