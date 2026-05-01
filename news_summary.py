@@ -25,7 +25,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID")  # Bisa @channelname atau -100xxxxxxxxxx
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 RSS_FEED_URL = os.getenv("RSS_FEED_URL")
-PROCESSED_LINKS_FILE = os.getenv("PROCESSED_LINKS_FILE", "processed_links.txt")
+PROCESSED_LINKS_FILE = os.getenv("PROCESSED_LINKS_FILE", "processed_links.json")
 
 # Limits
 MAX_ARTICLES_PER_RUN = int(os.getenv("MAX_ARTICLES_PER_RUN", "5"))
@@ -36,20 +36,45 @@ CRAWL_CACHE_DIR = os.getenv("CRAWL_CACHE_DIR", "./crawl_cache")
 
 # ==================== HELPER FUNCTIONS ====================
 
-def load_processed_links():
-    """Load daftar link yang sudah diproses dari file."""
+def load_processed_data():
+    """Load data link yang sudah diproses dari file JSON."""
     if not Path(PROCESSED_LINKS_FILE).exists():
-        return set()
+        return {"processed_links": {}, "total_count": 0}
     
-    with open(PROCESSED_LINKS_FILE, 'r', encoding='utf-8') as f:
-        return set(line.strip() for line in f if line.strip())
+    try:
+        with open(PROCESSED_LINKS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            # Ensure backward compatibility
+            if isinstance(data, list):
+                # Convert old format (list of links) to new format (dict)
+                converted_data = {"processed_links": {}, "total_count": len(data)}
+                for link in data:
+                    converted_data["processed_links"][link] = {
+                        "title": "Unknown",
+                        "summary": "",
+                        "processed_at": datetime.now().isoformat()
+                    }
+                return converted_data
+            return data
+    except (json.JSONDecodeError, Exception) as e:
+        print(f"⚠️ Error loading processed data: {e}. Starting fresh.")
+        return {"processed_links": {}, "total_count": 0}
 
 
-def save_processed_links(links):
-    """Simpan daftar link yang sudah diproses ke file."""
+def save_processed_data(data):
+    """Simpan data link yang sudah diproses ke file JSON dengan formatting yang rapi."""
+    # Update total count
+    data["total_count"] = len(data["processed_links"])
+    
     with open(PROCESSED_LINKS_FILE, 'w', encoding='utf-8') as f:
-        for link in sorted(links):
-            f.write(f"{link}\n")
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    
+    print(f"💾 Saved {data['total_count']} processed articles to {PROCESSED_LINKS_FILE}")
+
+
+def get_link_hash(link):
+    """Generate hash unik untuk link."""
+    return hashlib.md5(link.encode()).hexdigest()[:8]
 
 
 def fetch_rss_feed(url):
@@ -105,7 +130,7 @@ async def extract_content_with_crawl4ai(url):
             else:
                 print(f"❌ Crawl4AI error: {result.error_message if hasattr(result, 'error_message') else 'Unknown error'}")
                 return None
-                
+    
     except Exception as e:
         print(f"❌ Error fetching with Crawl4AI: {str(e)}")
         return None
@@ -120,14 +145,18 @@ def generate_summary_with_gemini(title, content, author="", source_url=""):
     """Generate summary menggunakan Google Gemini API dengan SDK google-genai."""
     print(f"🤖 Generating AI summary with Gemini...")
     
-    try:
-        # Initialize client dengan SDK baru
-        genai_client = client.Client(api_key=GEMINI_API_KEY)
-        
-        # Gunakan model gemini-flash-lite-latest (model terbaru yang lebih efisien)
-        model_name = "gemini-flash-lite-latest"
-        
-        system_instruction = """**Role:** Senior Crypto Analyst for "Crypto Market Insight" Telegram channel.
+    max_retries = 5
+    retry_delay = 10  # detik
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            # Initialize client dengan SDK baru
+            genai_client = client.Client(api_key=GEMINI_API_KEY)
+            
+            # Gunakan model gemini-flash-lite-latest (model terbaru yang lebih efisien)
+            model_name = "gemini-flash-lite-latest"
+            
+            system_instruction = """**Role:** Senior Crypto Analyst for "Crypto Market Insight" Telegram channel.
 
 **Task:** Summarize news into a high-impact Telegram post. 
 **STRICT CONSTRAINT:** The total output MUST be under 1000 characters to ensure it fits Telegram's caption limit (1024 characters).
@@ -148,7 +177,7 @@ def generate_summary_with_gemini(title, content, author="", source_url=""):
 
 🔗 <b>Source:</b> <a href=""></a>"""
 
-        prompt = f"""{system_instruction}
+            prompt = f"""{system_instruction}
 
 **News Title:** {title}
 **Author:** {author}
@@ -160,25 +189,42 @@ def generate_summary_with_gemini(title, content, author="", source_url=""):
 ---
 
 Generate the summary now following the exact structure above. Ensure the source link at the end uses the Source URL provided."""
-        
-        # Generate content dengan SDK baru
-        response = genai_client.models.generate_content(
-            model=model_name,
-            contents=prompt
-        )
-        
-        summary = response.text
-        
-        # Truncate jika terlalu panjang (strict 1000 chars for Telegram caption)
-        if len(summary) > 1000:
-            summary = summary[:950] + "\n\n<i>(truncated)</i>"
-        
-        print(f"✅ Summary generated: {len(summary)} characters")
-        return summary
-        
-    except Exception as e:
-        print(f"❌ Gemini API error: {str(e)}")
-        return None
+            
+            # Generate content dengan SDK baru
+            response = genai_client.models.generate_content(
+                model=model_name,
+                contents=prompt
+            )
+            
+            summary = response.text
+            
+            # Truncate jika terlalu panjang (strict 1000 chars for Telegram caption)
+            if len(summary) > 1000:
+                summary = summary[:950] + "\n\n<i>(truncated)</i>"
+            
+            print(f"✅ Summary generated: {len(summary)} characters")
+            return summary
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"❌ Gemini API error (Attempt {attempt}/{max_retries}): {error_msg}")
+            
+            # Check for 503 UNAVAILABLE error
+            if "503" in error_msg or "UNAVAILABLE" in error_msg or "high demand" in error_msg:
+                if attempt < max_retries:
+                    print(f"⏳ Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                    time.sleep(retry_delay)
+                    # Exponential backoff: increase delay for next retry
+                    retry_delay *= 2
+                    continue
+                else:
+                    print(f"❌ Max retries reached. Skipping this article.")
+                    return None
+            else:
+                # Non-retryable error
+                return None
+    
+    return None
 
 
 def send_to_telegram(message):
@@ -204,7 +250,7 @@ def send_to_telegram(message):
         else:
             print(f"❌ Telegram API error: {result}")
             return False
-            
+    
     except Exception as e:
         print(f"❌ Error sending to Telegram: {str(e)}")
         return False
@@ -232,17 +278,19 @@ def main():
         print(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
         sys.exit(1)
     
-    # Load processed links
-    processed_links = load_processed_links()
-    print(f"📋 Loaded {len(processed_links)} previously processed links")
+    # Load processed data dari JSON
+    processed_data = load_processed_data()
+    processed_links_dict = processed_data.get("processed_links", {})
+    
+    print(f"📋 Loaded {len(processed_links_dict)} previously processed articles")
     
     # Fetch RSS feed
     articles = fetch_rss_feed(RSS_FEED_URL)
     
     # Filter artikel baru
     new_articles = [
-        article for article in articles 
-        if article['link'] not in processed_links
+        article for article in articles
+        if article['link'] not in processed_links_dict
     ]
     
     print(f"🆕 Found {len(new_articles)} new articles to process")
@@ -253,7 +301,7 @@ def main():
     
     # Process artikel baru (limit jumlah per run)
     articles_to_process = new_articles[:MAX_ARTICLES_PER_RUN]
-    newly_processed = set()
+    newly_processed = {}
     
     for i, article in enumerate(articles_to_process, 1):
         print(f"\n{'='*60}")
@@ -292,7 +340,15 @@ def main():
         success = send_to_telegram(telegram_message)
         
         if success:
-            newly_processed.add(article['link'])
+            # Simpan data lengkap ke dictionary
+            newly_processed[article['link']] = {
+                "title": article['title'],
+                "summary": summary,
+                "processed_at": datetime.now().isoformat(),
+                "author": article.get('author', 'Unknown'),
+                "published": article.get('published', '')
+            }
+            
             print(f"✅ Successfully processed and sent: {article['title']}")
             
             # Rate limiting: tunggu 2 detik antar request
@@ -301,10 +357,10 @@ def main():
         else:
             print(f"❌ Failed to send to Telegram for: {article['title']}")
     
-    # Update processed links
-    all_processed = processed_links.union(newly_processed)
-    save_processed_links(all_processed)
-    print(f"\n💾 Saved {len(all_processed)} total processed links to {PROCESSED_LINKS_FILE}")
+    # Update processed data
+    processed_links_dict.update(newly_processed)
+    processed_data["processed_links"] = processed_links_dict
+    save_processed_data(processed_data)
     
     # Summary
     print("\n" + "=" * 60)
@@ -313,7 +369,7 @@ def main():
     print(f"Total articles in RSS: {len(articles)}")
     print(f"New articles found: {len(new_articles)}")
     print(f"Articles processed this run: {len(newly_processed)}")
-    print(f"Total processed links stored: {len(all_processed)}")
+    print(f"Total processed articles stored: {len(processed_links_dict)}")
     print("=" * 60)
     print("✅ Workflow completed successfully!")
 
