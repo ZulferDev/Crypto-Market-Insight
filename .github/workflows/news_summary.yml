@@ -1,8 +1,8 @@
 name: AI News Summary to Telegram
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
+  repository_dispatch:
+    types: [zapier_trigger]
   workflow_dispatch:
     # Manual trigger untuk testing
 
