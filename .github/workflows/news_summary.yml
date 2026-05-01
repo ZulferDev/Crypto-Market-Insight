@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install feedparser requests google-generativeai python-dotenv crawl4ai playwright
+          pip install feedparser requests google-genai>=1.0.0 python-dotenv crawl4ai playwright
           playwright install chromium --with-deps
 
       - name: Run news summary script
