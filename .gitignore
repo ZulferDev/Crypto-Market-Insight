@@ -1,1 +1,42 @@
-(news_summary.py is a source file, and there are no build artifacts, dependencies, or temporary files in the changes)
+```
+# Dependencies
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage/
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.ENV
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+*.env.*
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+```
