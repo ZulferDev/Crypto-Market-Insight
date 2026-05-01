@@ -2,8 +2,7 @@ name: AI News Summary to Telegram
 
 on:
   schedule:
-    # Jalankan setiap 30 menit (bisa disesuaikan)
-    - cron: '*/30 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
     # Manual trigger untuk testing
 
