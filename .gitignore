@@ -9,22 +9,17 @@ env/
 venv/
 .venv/
 .ENV
-.ENV.*
+.ENV.local
 .env
+.env.local
 .env.*
+.venv.bak
 pip-log.txt
 pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.pytest_cache/
-.mypy_cache/
-.hypothesis/
+
+# Dependencies
+requirements.txt.bak
+requirements.txt~
 
 # Distribution / packaging
 .Python
@@ -44,9 +39,21 @@ wheels/
 .installed.cfg
 *.egg
 
+# Testing
+.coverage
+coverage/
+htmlcov/
+.nyc_output
+coverage.xml
+*.cover
+.hypothesis/
+
 # IDEs
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # OS generated files
 .DS_Store
@@ -56,4 +63,5 @@ wheels/
 .Trashes
 ehthumbs.db
 Thumbs.db
+Icon?
 ```
