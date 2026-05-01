@@ -14,7 +14,9 @@ TELEGRAM_CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID")  # Bisa @channelname atau
 
 
 # ==================== AI CONFIGURATION ====================
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Support single or multiple API keys for rotation (comma-separated)
+GEMINI_API_KEYS = os.getenv("GEMINI_API_KEYS", "")  # Comma-separated list
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  # Deprecated: kept for backward compatibility
 
 # Free tier models for fallback
 FREE_TIER_MODELS = [
@@ -27,6 +29,27 @@ FREE_TIER_MODELS = [
     "gemini-2.0-flash",
     "gemini-3-flash-preview"
 ]
+
+
+def get_gemini_api_keys() -> List[str]:
+    """
+    Get list of Gemini API keys from environment variables.
+    
+    Returns:
+        List of API keys. Falls back to single GEMINI_API_KEY if GEMINI_API_KEYS not set.
+    """
+    # Try new multi-key variable first
+    if GEMINI_API_KEYS:
+        # Split by comma and strip whitespace
+        keys = [key.strip() for key in GEMINI_API_KEYS.split(",") if key.strip()]
+        if keys:
+            return keys
+    
+    # Fallback to legacy single key
+    if GEMINI_API_KEY:
+        return [GEMINI_API_KEY]
+    
+    return []
 
 
 # ==================== RSS FEED CONFIGURATION ====================
@@ -89,9 +112,11 @@ def validate_config():
     # Get RSS URLs using the new helper function
     rss_urls = get_rss_feed_urls()
     
+    # Get API keys using the new helper function
+    api_keys = get_gemini_api_keys()
+    
     required_vars = {
         "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
-        "GEMINI_API_KEY": GEMINI_API_KEY,
     }
     
     missing = [var for var, value in required_vars.items() if not value]
@@ -102,6 +127,10 @@ def validate_config():
     # Validate at least one RSS feed is provided
     if not rss_urls:
         raise ValueError("At least one RSS feed URL must be provided (RSS_FEED_URLS or RSS_FEED_URL)")
+    
+    # Validate at least one API key is provided
+    if not api_keys:
+        raise ValueError("At least one Gemini API key must be provided (GEMINI_API_KEYS or GEMINI_API_KEY)")
     
     if USE_GOOGLE_SHEETS and not GOOGLE_SHEETS_ID:
         raise ValueError("GOOGLE_SHEETS_ID is required when USE_GOOGLE_SHEETS is true")

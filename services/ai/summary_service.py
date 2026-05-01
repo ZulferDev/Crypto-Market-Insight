@@ -1,25 +1,34 @@
-"""AI Summary Service - Generates article summaries using Google Gemini AI"""
+"""AI Summary Service - Generates article summaries using Google Gemini AI with API key rotation"""
 
 import os
 import time
 import json as json_lib
-from typing import Optional
+from typing import Optional, List
 
 from google import genai
 from google.genai import types
 
 
 class AISummaryService:
-    """Service for generating AI-powered article summaries using Google Gemini."""
+    """Service for generating AI-powered article summaries using Google Gemini with API key rotation."""
     
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_keys: List[str] = None):
         """
-        Initialize AI summary service.
+        Initialize AI summary service with API key rotation support.
         
         Args:
-            api_key: Google Gemini API key. If None, will use GEMINI_API_KEY env var.
+            api_keys: List of Google Gemini API keys for rotation. 
+                     If None or empty, will use get_gemini_api_keys() from config.
         """
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        # Import here to avoid circular imports
+        from config.settings import get_gemini_api_keys
+        
+        self.api_keys = api_keys or get_gemini_api_keys()
+        
+        if not self.api_keys:
+            raise ValueError("No API keys provided. Set GEMINI_API_KEYS or GEMINI_API_KEY environment variable.")
+        
+        self.current_key_index = 0
         
         # Free tier models for fallback
         self.free_tier_models = [
@@ -54,6 +63,16 @@ class AISummaryService:
 
 🔗 <b>Source:</b> <a href=""></a>"""
     
+    def _get_current_api_key(self) -> str:
+        """Get the current API key from the rotation list."""
+        return self.api_keys[self.current_key_index]
+    
+    def _rotate_api_key(self):
+        """Rotate to the next API key in the list."""
+        if len(self.api_keys) > 1:
+            self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
+            print(f"🔄 Rotated to API key #{self.current_key_index + 1}/{len(self.api_keys)}")
+    
     def generate_summary(
         self, 
         title: str, 
@@ -64,7 +83,7 @@ class AISummaryService:
         retry_delay: float = 1.0
     ) -> Optional[str]:
         """
-        Generate summary using Google Gemini API with model fallback.
+        Generate summary using Google Gemini API with model fallback and API key rotation.
         
         Args:
             title: Article title
@@ -77,51 +96,88 @@ class AISummaryService:
         Returns:
             Generated summary text or None if all models fail
         """
-        print(f"🤖 Generating AI summary with Gemini...")
+        print(f"🤖 Generating AI summary with Gemini (using {len(self.api_keys)} API key(s))...")
+        
+        # Track consecutive failures across all keys and models
+        consecutive_failures = 0
+        max_consecutive_failures = len(self.api_keys) * len(self.free_tier_models)
         
         # Try each free tier model until success
         for model_idx, model_name in enumerate(self.free_tier_models, 1):
             print(f"\n🔄 Trying model {model_idx}/{len(self.free_tier_models)}: {model_name}")
             
-            for attempt in range(1, max_retries_per_model + 1):
-                try:
-                    summary = self._generate_with_model(
-                        model_name=model_name,
-                        title=title,
-                        content=content,
-                        author=author,
-                        source_url=source_url
-                    )
-                    
-                    if summary:
-                        print(f"✅ Summary generated with {model_name}: {len(summary)} characters")
-                        return summary
-                    
-                except Exception as e:
-                    error_msg = str(e)
-                    print(f"❌ {model_name} error (Attempt {attempt}/{max_retries_per_model}): {error_msg}")
-                    
-                    # Check for rate limit or unavailable errors
-                    if any(code in error_msg for code in ["503", "429", "UNAVAILABLE", "high demand", "quota"]):
-                        if attempt < max_retries_per_model:
-                            print(f"⏳ Retrying {model_name} in {retry_delay} second...")
-                            time.sleep(retry_delay)
-                            continue
+            # Try each API key for this model
+            keys_tried = 0
+            while keys_tried < len(self.api_keys):
+                current_key = self._get_current_api_key()
+                
+                for attempt in range(1, max_retries_per_model + 1):
+                    try:
+                        summary = self._generate_with_model(
+                            api_key=current_key,
+                            model_name=model_name,
+                            title=title,
+                            content=content,
+                            author=author,
+                            source_url=source_url
+                        )
+                        
+                        if summary:
+                            print(f"✅ Summary generated with {model_name} (API key #{self.current_key_index + 1}): {len(summary)} characters")
+                            return summary
+                        
+                    except Exception as e:
+                        error_msg = str(e)
+                        print(f"❌ {model_name} (API key #{self.current_key_index + 1}) error (Attempt {attempt}/{max_retries_per_model}): {error_msg}")
+                        
+                        # Check for rate limit or unavailable errors
+                        if any(code in error_msg for code in ["503", "429", "UNAVAILABLE", "high demand", "quota", "RESOURCE_EXHAUSTED"]):
+                            consecutive_failures += 1
+                            
+                            if attempt < max_retries_per_model:
+                                print(f"⏳ Retrying with same key in {retry_delay}s...")
+                                time.sleep(retry_delay)
+                                continue
+                            else:
+                                # Try next API key if available
+                                if len(self.api_keys) > 1 and keys_tried < len(self.api_keys) - 1:
+                                    print(f"⏭️ Switching to next API key after {retry_delay}s delay...")
+                                    self._rotate_api_key()
+                                    keys_tried += 1
+                                    time.sleep(retry_delay)
+                                    break
+                                else:
+                                    # Move to next model
+                                    print(f"⏭️ All API keys exhausted for {model_name}, switching to next model...")
+                                    time.sleep(retry_delay)
+                                    break
                         else:
-                            # Move to next model
-                            print(f"⏭️ Switching to next model after {retry_delay}s delay...")
-                            time.sleep(retry_delay)
-                            break
-                    else:
-                        # Non-retryable error, try next model
-                        time.sleep(retry_delay)
-                        break
+                            # Non-retryable error, try next key or model
+                            consecutive_failures += 1
+                            if len(self.api_keys) > 1 and keys_tried < len(self.api_keys) - 1:
+                                self._rotate_api_key()
+                                keys_tried += 1
+                                time.sleep(retry_delay)
+                                break
+                            else:
+                                time.sleep(retry_delay)
+                                break
+                
+                # If we've tried all keys for this model without success, move to next model
+                if keys_tried >= len(self.api_keys) - 1 or len(self.api_keys) == 1:
+                    break
+            
+            # Check if we should give up entirely
+            if consecutive_failures >= max_consecutive_failures:
+                print(f"❌ Too many consecutive failures ({consecutive_failures}). Aborting.")
+                break
         
-        print(f"❌ All models failed. Skipping this article.")
+        print(f"❌ All models and API keys exhausted. Skipping this article.")
         return None
     
     def _generate_with_model(
         self, 
+        api_key: str,
         model_name: str, 
         title: str, 
         content: str, 
@@ -129,9 +185,10 @@ class AISummaryService:
         source_url: str
     ) -> Optional[str]:
         """
-        Generate summary using a specific Gemini model.
+        Generate summary using a specific Gemini model and API key.
         
         Args:
+            api_key: API key to use for this request
             model_name: Model identifier
             title: Article title
             content: Article content
@@ -142,7 +199,7 @@ class AISummaryService:
             Generated summary or None
         """
         # Initialize client with SDK
-        genai_client = genai.Client(api_key=self.api_key)
+        genai_client = genai.Client(api_key=api_key)
         
         # Prepare content for input
         user_content = f"""**News Title:** {title}
