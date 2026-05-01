@@ -36,6 +36,7 @@ jobs:
       - name: Setup Service Account (if using Google Sheets)
         run: |
           echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" | base64 -d > service_account.json
+
       - name: Run news summary script
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -45,12 +46,14 @@ jobs:
           USE_GOOGLE_SHEETS: ${{ secrets.USE_GOOGLE_SHEETS || 'false' }}
           GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
           GOOGLE_SERVICE_ACCOUNT_FILE: service_account.json
-        run: python news_summary.py
+        run: python main.py
 
       - name: Upload processed_links.json as artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: processed-links
-          path: processed_links.json
+          path: |
+            processed_links.json
+            data/
           retention-days: 7
