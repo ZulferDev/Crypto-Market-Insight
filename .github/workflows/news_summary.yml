@@ -1,0 +1,43 @@
+name: AI News Summary to Telegram
+
+on:
+  schedule:
+    # Jalankan setiap 30 menit (bisa disesuaikan)
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    # Manual trigger untuk testing
+
+jobs:
+  news-summary:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install feedparser requests google-generativeai python-dotenv
+
+      - name: Run news summary script
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RSS_FEED_URL: ${{ secrets.RSS_FEED_URL }}
+          PROCESSED_LINKS_FILE: processed_links.txt
+        run: python news_summary.py
+
+      - name: Commit and push processed links (optional)
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add processed_links.txt || true
+          git commit -m "Update processed links" || true
+          git push || true
