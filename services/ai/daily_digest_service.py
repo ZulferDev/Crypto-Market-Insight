@@ -312,11 +312,15 @@ Generate the comprehensive daily market intelligence report now following the ex
         
         filtered_articles = []
         for link, article in processed_data.items():
-            processed_at = article.get('processed_at', '')
+            # Convert ProcessedArticle object to dict if needed
             if isinstance(article, object) and hasattr(article, 'to_dict'):
                 article_dict = article.to_dict()
-            else:
+            elif isinstance(article, dict):
                 article_dict = article
+            else:
+                continue
+            
+            processed_at = article_dict.get('processed_at', '')
             
             # Check if processed_at contains the target date
             if target_date_str in processed_at:
