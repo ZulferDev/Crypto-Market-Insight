@@ -24,13 +24,14 @@ class TelegramService:
         if not self.channel_id:
             raise ValueError("TELEGRAM_CHANNEL_ID is required")
     
-    def send_message(self, message: str, image_url: Optional[str] = None) -> bool:
+    def send_message(self, message: str, image_url: Optional[str] = None, parse_mode: str = "HTML") -> bool:
         """
         Send message to Telegram channel with optional image.
         
         Args:
             message: Message text (supports HTML parse mode)
             image_url: Optional image URL to send with message
+            parse_mode: Parse mode for message formatting (default: HTML)
             
         Returns:
             True if sent successfully, False otherwise
@@ -38,30 +39,30 @@ class TelegramService:
         print(f"📤 Sending to Telegram channel: {self.channel_id}")
         
         if image_url:
-            return self._send_photo(message, image_url)
+            return self._send_photo(message, image_url, parse_mode)
         else:
-            return self._send_text_message(message)
+            return self._send_text_message(message, parse_mode)
     
-    def _send_text_message(self, message: str) -> bool:
+    def _send_text_message(self, message: str, parse_mode: str = "HTML") -> bool:
         """Send text-only message to Telegram."""
         url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
         payload = {
             'chat_id': self.channel_id,
             'text': message,
-            'parse_mode': 'HTML',
+            'parse_mode': parse_mode,
             'disable_web_page_preview': False
         }
         
         return self._send_request(url, payload, "text message")
     
-    def _send_photo(self, message: str, image_url: str) -> bool:
+    def _send_photo(self, message: str, image_url: str, parse_mode: str = "HTML") -> bool:
         """Send photo with caption to Telegram."""
         url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
         payload = {
             'chat_id': self.channel_id,
             'photo': image_url,
             'caption': message,
-            'parse_mode': 'HTML',
+            'parse_mode': parse_mode,
             'disable_web_page_preview': False
         }
         
