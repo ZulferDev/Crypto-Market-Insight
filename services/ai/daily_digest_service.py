@@ -2,6 +2,7 @@
 
 import os
 import json as json_lib
+import time
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 from pathlib import Path
@@ -211,8 +212,6 @@ Analyze the provided news data and **SELECT ONLY the top 3-5 most significant de
         Returns:
             Generated digest or None
         """
-        import time
-        
         # Initialize client with SDK
         genai_client = genai.Client(api_key=api_key)
         
@@ -243,18 +242,9 @@ Generate the comprehensive daily market intelligence report now following the ex
         
         # Configure generate content with HIGH-LEVEL THINKING
         generate_config = types.GenerateContentConfig(
-            temperature=0.7,
+            temperature=0.9,
             thinking_config=types.ThinkingConfig(
                 thinking_level="HIGH",  # High-level thinking for deep analysis
-            ),
-            response_mime_type="application/json",
-            response_schema=genai.types.Schema(
-                type=genai.types.Type.OBJECT,
-                properties={
-                    "response": genai.types.Schema(
-                        type=genai.types.Type.STRING,
-                    ),
-                },
             ),
             system_instruction=[
                 types.Part.from_text(text=system_instruction),
@@ -281,14 +271,7 @@ Generate the comprehensive daily market intelligence report now following the ex
             if text := chunk.text:
                 full_response += text
         
-        # Parse JSON response
-        try:
-            response_data = json_lib.loads(full_response)
-            digest = response_data.get("response", full_response)
-        except:
-            digest = full_response
-        
-        return digest if digest else None
+        return full_response if full_response else None
     
     def get_articles_by_date(
         self,
