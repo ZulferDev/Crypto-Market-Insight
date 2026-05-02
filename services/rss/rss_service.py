@@ -61,6 +61,9 @@ class RSSFeedService:
             )
             articles.append(article)
         
+        # Limit to 3 most recent articles
+        articles = articles[:3]
+        
         print(f"✅ Found {len(articles)} articles in RSS feed")
         return articles
     
