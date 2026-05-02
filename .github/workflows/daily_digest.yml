@@ -1,0 +1,75 @@
+name: Daily Crypto Market Intelligence Digest
+
+on:
+  schedule:
+    # Runs at 01:00 UTC every day (adjust time as needed)
+    # This ensures previous day's news is fully collected
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+    # Manual trigger for testing
+    inputs:
+      target_date:
+        description: 'Target date for digest (YYYY-MM-DD format, optional)'
+        required: false
+        default: ''
+
+jobs:
+  daily-digest:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Setup Service Account (if using Google Sheets)
+        run: |
+          echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" | base64 -d > service_account.json
+
+      - name: Run daily digest script
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}  # Comma-separated list of API keys (recommended)
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}  # Fallback for single key (deprecated)
+          RSS_FEED_URLS: ${{ secrets.RSS_FEED_URLS }}  # Comma-separated list of RSS feeds (recommended)
+          RSS_FEED_URL: ${{ secrets.RSS_FEED_URL }}  # Fallback for single feed (deprecated)
+          USE_GOOGLE_SHEETS: ${{ secrets.USE_GOOGLE_SHEETS || 'false' }}
+          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+          GOOGLE_SERVICE_ACCOUNT_FILE: service_account.json
+          MAX_ARTICLES_PER_RUN: ${{ secrets.MAX_ARTICLES_PER_RUN || '5' }}
+          TARGET_DATE: ${{ github.event.inputs.target_date }}
+        run: python daily_digest.py
+
+      - name: Upload digest logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-digest-logs
+          path: |
+            processed_links.json
+            data/
+          retention-days: 7
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Daily digest workflow failed!"
+          echo "Check GitHub Actions logs for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
