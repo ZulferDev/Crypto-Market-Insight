@@ -50,7 +50,8 @@ class TelegramService:
             'chat_id': self.channel_id,
             'text': message,
             'parse_mode': parse_mode,
-            'disable_web_page_preview': False
+            'disable_web_page_preview': True,
+            'link_preview_options': {'is_disabled': True}
         }
         
         return self._send_request(url, payload, "text message")
@@ -63,7 +64,7 @@ class TelegramService:
             'photo': image_url,
             'caption': message,
             'parse_mode': parse_mode,
-            'disable_web_page_preview': False
+            'show_caption_above_media': True
         }
         
         return self._send_request(url, payload, "photo with caption")
