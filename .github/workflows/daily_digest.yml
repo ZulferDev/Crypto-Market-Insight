@@ -4,7 +4,7 @@ on:
   schedule:
     # Runs at 01:00 UTC every day (adjust time as needed)
     # This ensures previous day's news is fully collected
-    - cron: '0 1 * * *'
+    - cron: '13 1 * * *'
   workflow_dispatch:
     # Manual trigger for testing
     inputs:
