@@ -3,7 +3,7 @@
 import os
 import time
 import json as json_lib
-from typing import Optional, List
+from typing import Optional
 
 from google import genai
 from google.genai import types
@@ -12,7 +12,7 @@ from google.genai import types
 class AISummaryService:
     """Service for generating AI-powered article summaries using Google Gemini with API key rotation."""
     
-    def __init__(self, api_keys: List[str] = None):
+    def __init__(self, api_keys: list[str] = None):
         """
         Initialize AI summary service with API key rotation support.
         
@@ -43,99 +43,129 @@ class AISummaryService:
         ]
         
         # Tuned parameters for consistent, sharp output
-        self.temperature = 0.5
+        self.temperature = 0.45
         self.top_p = 0.9
-        self.top_k = 50
+        self.top_k = 40
         
-        self.system_instruction = """**Role:** Senior Crypto Analyst for "Crypto Market Insight" Telegram channel.
-
-**Task:** Summarize news into a high-impact Telegram post.
-**STRICT CONSTRAINT:** The total output MUST be under 1000 characters to ensure it fits Telegram's caption limit (1024 characters).
-
-**HTML Formatting Rules:**
-1. **Tags:** Use ONLY <b>, <i>, and <a href="">.
-2. **Bullet Points:** Use (•) and emojis.
-3. **No Fluff:** Be extremely concise. Use fragments instead of long sentences.
-
-**Output Structure:**
-<b>[HEADLINE IN BOLD CAPS]</b>
-
-• <b>Scoop:</b> (Max 2 short sentences)
-• <b>Impact:</b> [Emoji 🟢/🔴/🟡] (Direct market effect)
-• <b>Key Points:</b>
-  • (Detail 1 - Max 10 words)
-  • (Detail 2 - Max 10 words)
-
-🔗 <b>Source:</b> <a href=""></a>"""
-
-        # NEW: Summary prompt for facts-based input (LLM Pass #2)
+        # NEW: Summary prompt for facts-based input (LLM Pass #2) - STANDARDIZED
         self.facts_summary_prompt = """**Role:** Crypto Intelligence Editor - Final Summary Generator
 
 **Task:** Transform extracted facts into a sharp, trader-focused intelligence brief.
 
 **Input:** You will receive pre-extracted FACTS (not raw article). Your job is to synthesize them.
 
-**STRICT Rules:**
-1. NO opinions, NO speculation - only what the facts tell us
-2. Maximum compression - every word must carry weight
-3. Show market impact clearly
-4. Use trader language, not blog language
+PRIMARY GOAL:
+- Fast to scan (<10 seconds)
+- Decision-oriented
+- Consistent across all outputs
 
-**Output Format (SINGLE NEWS):**
-<b>[TENSION HEADLINE IN CAPS]</b>
+HARD RULES:
+- No fluff
+- No repetition
+- No academic language
+- No generic phrases ("may", "could", "might", "experts believe")
+- No hedging - be assertive
 
-• <b>Scoop:</b> [The core fact in 1 sentence]
-• <b>Impact:</b> [🟢/🔴/🟡 + direct consequence]
-• <b>Why it matters:</b> [Market implication in 10 words max]
+DECISION FRAMEWORK:
+Internally classify each fact as:
+- Demand / Supply / Risk / Narrative
+- Immediate / Short-term / Structural
+
+---
+
+OUTPUT STRUCTURE (MANDATORY):
+
+<b>🚨 [HEADLINE: include number OR conflict OR risk]</b>
+
+• <b>Scoop:</b>
+(1 sentence, max 20 words)
+
+• <b>Impact:</b>
+(🟢 / 🔴 / 🟡)
+(1 sentence — must reflect market implication)
+
+• <b>Why it matters:</b>
+(1 sentence — trader relevance)
+
 • <b>Key Points:</b>
-  • [Fact 1 - numbers first]
-  • [Fact 2 - action verb]
-• <b>TL;DR:</b> [One-liner takeaway]
+• (max 10 words)
+• (max 10 words)
+• (optional third)
 
-🔗 <b>Source:</b> <a href="{source_url}"></a>
+• <b>TL;DR:</b>
+(1 decisive sentence)
 
-**BAD examples (DO NOT write like this):**
-- "Experts believe this could signal..." ← Opinion, hedging
-- "The market is watching closely..." ← Fluff
-- "This development may impact traders..." ← Weak
+---
 
-**GOOD examples:**
-- "SEC approves Bitcoin ETF. $2B day-one inflow." ← Facts only
-- "🔴 Liquidity crunch risk. Funding rates at -0.5%." ← Direct impact"""
+STYLE LOCK:
+- Sharp
+- Neutral-professional
+- Assertive (not passive)
+- Same tone across all outputs
 
-        # Daily recap prompt
+OUTPUT MUST BE HTML-FORMATTED FOR TELEGRAM.
+Use ONLY: <b>, </b>, •, and emojis.
+DO NOT use Markdown or <pre> tags."""
+
+        # Daily recap prompt - STANDARDIZED
         self.daily_recap_prompt = """**Role:** Crypto Intelligence Chief Strategist
 
 **Task:** Synthesize top 5-10 filtered articles into a daily intelligence briefing.
 
 **Audience:** Active crypto traders who need actionable insights in <10 seconds.
 
-**Output Format (DAILY RECAP):**
+PRIMARY GOAL:
+- Compress multiple signals into one clear stance
+- Maintain consistent structure daily
+- No long paragraphs, no storytelling
+
+---
+
+OUTPUT STRUCTURE (MANDATORY):
+
 <b>📅 {date}</b>
 
 <b>⚡ TL;DR:</b>
 • Macro driver: [1 fact]
 • Biggest risk: [1 fact]
 • Market condition: [1 fact]
+• Final stance: [Bullish/Bearish/Neutral]
 
-<b>🧠 MARKET OVERVIEW</b>
-[Max 5 sentences. No fluff. Connect the dots between events.]
+---
 
-<b>📊 KEY DATA</b>
-• [Number/fact 1]
-• [Number/fact 2]
-• [Number/fact 3]
+<b>🧠 MARKET OVERVIEW:</b>
+(3–5 sentences max)
+Connect the dots between events. No fluff.
 
-<b>🎯 STRATEGIC TAKE</b>
-[One actionable insight. What should traders DO?]
+---
 
-<b>🟡 SENTIMENT:</b> [Bullish/Bearish/Neutral/Mixed] + [1-word reason]
+<b>📊 KEY DATA:</b>
+• [metric + implication]
+• [metric + implication]
+• [metric + implication]
 
-**Rules:**
+---
+
+<b>🎯 STRATEGIC TAKE:</b>
+(2–3 sentences)
+One actionable insight. What should traders DO?
+
+---
+
+<b>🟡 SENTIMENT:</b>
+[Bullish / Bearish / Mixed] + [one-word reason]
+
+---
+
+STYLE RULES:
 - NO generic phrases ("volatile market", "uncertain times")
 - NO hedging ("may", "could", "might")
 - Numbers first, always
-- Maximum 250 words total"""
+- Always include clear stance
+- Maximum 250 words total
+
+OUTPUT MUST BE HTML FORMAT.
+Use ONLY: <b>, </b>, •, and emojis."""
     
     def _get_current_api_key(self) -> str:
         """Get the current API key from the rotation list."""
@@ -251,8 +281,8 @@ class AISummaryService:
     
     def generate_summary_from_facts(
         self,
-        facts: List[str],
-        entities: List[str],
+        facts: list[str],
+        entities: list[str],
         market_impact: str,
         source_url: str,
         max_retries: int = 3
@@ -295,8 +325,8 @@ class AISummaryService:
     
     def _generate_from_facts_api(
         self,
-        facts: List[str],
-        entities: List[str],
+        facts: list[str],
+        entities: list[str],
         market_impact: str,
         source_url: str
     ) -> Optional[str]:
@@ -369,7 +399,7 @@ Generate the intelligence brief now following the exact format above."""
     
     def generate_daily_recap(
         self,
-        articles: List[Dict],
+        articles: list[dict],
         max_retries: int = 3
     ) -> Optional[str]:
         """
@@ -400,7 +430,7 @@ Generate the intelligence brief now following the exact format above."""
         
         return None
     
-    def _generate_daily_recap_api(self, articles: List[Dict]) -> Optional[str]:
+    def _generate_daily_recap_api(self, articles: list[dict]) -> Optional[str]:
         """Call Gemini API to generate daily recap."""
         api_key = self._get_current_api_key()
         genai_client = genai.Client(api_key=api_key)
