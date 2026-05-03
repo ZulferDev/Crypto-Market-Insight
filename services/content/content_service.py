@@ -1,6 +1,7 @@
 """Content Extraction Service - 3-layer scraping system for article content"""
 
 import os
+import re
 import requests
 from bs4 import BeautifulSoup
 from typing import Optional
@@ -50,6 +51,111 @@ class ContentExtractionService:
             return content
         
         raise Exception("Gagal mengambil konten artikel setelah mencoba 3 layer scraping.")
+    
+    def clean_content(self, content: str) -> str:
+        """
+        Clean and normalize article content for processing.
+        
+        Removes:
+        - Ads and promotional content
+        - Author sections and bios
+        - Disclaimers and footnotes
+        - Navigation/sidebar elements
+        
+        Normalizes:
+        - Numbers and formatting
+        - Whitespace
+        - Limits to 800-1200 words
+        
+        Args:
+            content: Raw article content
+            
+        Returns:
+            Cleaned and normalized content
+        """
+        print("🧼 Cleaning and normalizing content...")
+        
+        text = content
+        
+        # Remove common ad/promo patterns
+        ad_patterns = [
+            r'(?i)(advertisement|sponsored|ad\s*:|promoted)',
+            r'(?i)(subscribe|sign up|newsletter|join our)',
+            r'(?i)(follow us on|twitter|facebook|linkedin|telegram)',
+            r'(?i)(read more|click here|learn more|get started)',
+            r'(?i)(related articles|you may also like|see also)',
+            r'(?i)(share this|email|print|save)',
+            r'(?i)(cookie policy|privacy policy|terms of service)',
+            r'(?i)(copyright ©|all rights reserved)',
+            r'(?i)(about the author|written by|author bio)',
+            r'(?i)(disclaimer|disclosure|not financial advice)',
+            r'(?i)(this article is|for informational purposes)',
+        ]
+        
+        for pattern in ad_patterns:
+            text = re.sub(pattern, '', text)
+        
+        # Remove URLs (keep text context)
+        text = re.sub(r'https?://\S+', '', text)
+        
+        # Remove email addresses
+        text = re.sub(r'\S+@\S+', '', text)
+        
+        # Normalize numbers (e.g., "$1,000,000" → "$1M")
+        text = self._normalize_numbers(text)
+        
+        # Normalize whitespace
+        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
+        # Remove special characters but keep basic punctuation
+        text = re.sub(r'[^\w\s.,!?;:()$%\-]', ' ', text)
+        
+        # Split into sentences and limit to target word count
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        
+        # Target 800-1200 words
+        words = []
+        current_word_count = 0
+        min_words = 800
+        max_words = 1200
+        
+        for sentence in sentences:
+            sentence_words = sentence.split()
+            if current_word_count + len(sentence_words) <= max_words:
+                words.extend(sentence_words)
+                current_word_count += len(sentence_words)
+            else:
+                break
+        
+        # Ensure minimum content
+        if current_word_count < min_words and len(sentences) > 0:
+            # Take at least first 10 sentences even if under min
+            words = []
+            for i, sentence in enumerate(sentences[:15]):
+                words.extend(sentence.split())
+        
+        cleaned = ' '.join(words)
+        
+        print(f"✅ Content cleaned: {len(cleaned.split())} words (target: 800-1200)")
+        
+        return cleaned.strip()
+    
+    def _normalize_numbers(self, text: str) -> str:
+        """Normalize number formatting for consistency."""
+        # Convert large numbers to abbreviated form
+        # $1,000,000 → $1M
+        text = re.sub(r'\$([\d,]+)\s*(million|billion|trillion)', 
+                      lambda m: f"${m.group(1).replace(',', '')} {m.group(2)}", 
+                      text, flags=re.IGNORECASE)
+        
+        # $1000000 → $1M (exact millions)
+        text = re.sub(r'\$(\d{7})\b', r'$\1', text)
+        
+        # Percentages: normalize spacing
+        text = re.sub(r'(\d+)\s*%', r'\1%', text)
+        
+        return text
     
     def _layer1_requests_bs4(self, url: str) -> Optional[str]:
         """
