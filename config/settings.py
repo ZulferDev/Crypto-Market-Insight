@@ -81,8 +81,10 @@ def get_rss_feed_urls() -> List[str]:
 
 # ==================== STORAGE CONFIGURATION ====================
 USE_GOOGLE_SHEETS = os.getenv("USE_GOOGLE_SHEETS", "false").lower() == "true"
-GOOGLE_SHEETS_ID = os.getenv("GOOGLE_SHEETS_ID", "")
+GOOGLE_SHEETS_ID = os.getenv("GOOGLE_SHEETS_ID", "")  # Legacy: for google-api-python-client
+GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", GOOGLE_SHEETS_ID)  # New: for gspread
 GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
+GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")  # JSON string for GitHub Actions
 
 # Local JSON fallback
 PROCESSED_LINKS_FILE = os.getenv("PROCESSED_LINKS_FILE", "processed_links.json")
