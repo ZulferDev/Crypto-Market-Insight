@@ -309,7 +309,7 @@ Use ONLY: <b>, </b>, •, and emojis."""
                     facts=facts,
                     entities=entities,
                     market_impact=market_impact,
-                    source_url=source_url
+                    source_urls=[source_url]  # Single source
                 )
                 if result:
                     print(f"✅ Summary generated from facts: {len(result)} characters")
@@ -323,12 +323,56 @@ Use ONLY: <b>, </b>, •, and emojis."""
         print("⚠️ Facts-based summary generation failed")
         return None
     
+    def generate_summary_from_cluster(
+        self,
+        merged_facts: list[str],
+        all_entities: list[str],
+        market_impact: str,
+        source_urls: list[str],
+        max_retries: int = 3
+    ) -> Optional[str]:
+        """
+        Generate summary from merged facts across multiple articles in a cluster.
+        Used for deduplication - combines facts from duplicate articles.
+        
+        Args:
+            merged_facts: Deduplicated facts from all cluster articles
+            all_entities: Combined entities from all articles
+            market_impact: Highest market impact level from cluster
+            source_urls: List of all source URLs
+            max_retries: Maximum retry attempts
+            
+        Returns:
+            Generated summary or None
+        """
+        print(f"🧠 Generating summary from merged cluster facts ({len(source_urls)} sources)...")
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                result = self._generate_from_facts_api(
+                    facts=merged_facts,
+                    entities=all_entities,
+                    market_impact=market_impact,
+                    source_urls=source_urls
+                )
+                if result:
+                    print(f"✅ Cluster summary generated: {len(result)} characters from {len(source_urls)} sources")
+                    return result
+            except Exception as e:
+                print(f"❌ Cluster summary attempt {attempt}/{max_retries} failed: {e}")
+                if attempt < max_retries:
+                    self._rotate_api_key()
+                    time.sleep(1.0)
+        
+        print("⚠️ Cluster-based summary generation failed")
+        return None
+    
     def _generate_from_facts_api(
         self,
         facts: list[str],
         entities: list[str],
         market_impact: str,
-        source_url: str
+        source_urls: list[str]
     ) -> Optional[str]:
         """Call Gemini API to generate summary from facts."""
         api_key = self._get_current_api_key()
@@ -337,6 +381,10 @@ Use ONLY: <b>, </b>, •, and emojis."""
         facts_text = "\n".join(f"- {fact}" for fact in facts)
         entities_text = ", ".join(entities[:5])
         
+        # Format source URLs - show first URL primarily, mention if multiple sources
+        primary_source = source_urls[0] if source_urls else ""
+        source_note = f" ({len(source_urls)} sources)" if len(source_urls) > 1 else ""
+        
         user_content = f"""**Extracted Facts:**
 {facts_text}
 
@@ -344,7 +392,7 @@ Use ONLY: <b>, </b>, •, and emojis."""
 
 **Market Impact Level:** {market_impact}
 
-**Source URL:** {source_url}
+**Source{source_note}:** {primary_source}
 
 ---
 Generate the intelligence brief now following the exact format above."""
@@ -362,7 +410,7 @@ Generate the intelligence brief now following the exact format above."""
                 },
             ),
             system_instruction=[
-                types.Part.from_text(text=self.facts_summary_prompt.format(source_url=source_url)),
+                types.Part.from_text(text=self.facts_summary_prompt.format(source_url=primary_source)),
             ],
         )
         
@@ -538,7 +586,7 @@ Generate the daily intelligence briefing now following the exact format above.""
         # Prepare content for input
         user_content = f"""**News Title:** {title}
 **Author:** {author}
-**Source URL:** {source_url}
+**Source:** {primary_source}
 
 **Full Content:**
 {content[:15000]}  # Limit konten untuk menghindari token limit
