@@ -2,35 +2,18 @@
 
 import feedparser
 from typing import List, Dict, Optional
-from dataclasses import dataclass
+from utils.logger import get_logger
+from utils.exceptions import RSSFetchError
+from models import Article as RSSArticleModel
 
 
-@dataclass
-class RSSArticle:
-    """Data class representing an article from RSS feed."""
-    title: str
-    link: str
-    published: str
-    summary: str
-    author: str
-    image_url: Optional[str] = None
-    
-    def to_dict(self) -> Dict:
-        """Convert to dictionary."""
-        return {
-            'title': self.title,
-            'link': self.link,
-            'published': self.published,
-            'summary': self.summary,
-            'author': self.author,
-            'image_url': self.image_url
-        }
+logger = get_logger("rss_service")
 
 
 class RSSFeedService:
     """Service for fetching and parsing RSS feeds."""
     
-    def fetch_feed(self, url: str) -> List[RSSArticle]:
+    def fetch_feed(self, url: str) -> List[RSSArticleModel]:
         """
         Parse RSS feed and return list of articles.
         
@@ -38,34 +21,42 @@ class RSSFeedService:
             url: RSS feed URL
             
         Returns:
-            List of RSSArticle objects
-        """
-        print(f"📰 Fetching RSS feed: {url}")
-        feed = feedparser.parse(url)
-        
-        if feed.bozo:
-            print(f"⚠️ Warning: RSS feed parsing error: {feed.bozo_exception}")
-        
-        articles = []
-        for entry in feed.entries:
-            # Extract image from various RSS fields
-            image_url = self._extract_image_from_entry(entry)
+            List of RSSArticleModel objects
             
-            article = RSSArticle(
-                title=entry.get('title', 'No Title'),
-                link=entry.get('link', ''),
-                published=entry.get('published', entry.get('updated', '')),
-                summary=entry.get('summary', ''),
-                author=entry.get('author', 'Unknown'),
-                image_url=image_url
-            )
-            articles.append(article)
-        
-        # Limit to 3 most recent articles
-        articles = articles[:3]
-        
-        print(f"✅ Found {len(articles)} articles in RSS feed")
-        return articles
+        Raises:
+            RSSFetchError: If feed fetching fails
+        """
+        logger.info(f"📰 Fetching RSS feed: {url}")
+        try:
+            feed = feedparser.parse(url)
+            
+            if feed.bozo:
+                logger.warning(f"⚠️ RSS feed parsing warning: {feed.bozo_exception}")
+            
+            articles = []
+            for entry in feed.entries:
+                # Extract image from various RSS fields
+                image_url = self._extract_image_from_entry(entry)
+                
+                article = RSSArticleModel(
+                    title=entry.get('title', 'No Title'),
+                    link=entry.get('link', ''),
+                    published=entry.get('published', entry.get('updated', '')),
+                    summary=entry.get('summary', ''),
+                    author=entry.get('author', 'Unknown'),
+                    image_url=image_url
+                )
+                articles.append(article)
+            
+            # Limit to 3 most recent articles
+            articles = articles[:3]
+            
+            logger.info(f"✅ Found {len(articles)} articles in RSS feed")
+            return articles
+            
+        except Exception as e:
+            logger.error(f"Failed to fetch RSS feed {url}: {e}", exc_info=True)
+            raise RSSFetchError(f"Failed to fetch RSS feed: {url}") from e
     
     def _extract_image_from_entry(self, entry) -> Optional[str]:
         """

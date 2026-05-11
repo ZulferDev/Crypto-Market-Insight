@@ -8,6 +8,11 @@ from typing import Optional
 from google import genai
 from google.genai import types
 
+from utils.logger import get_logger
+from utils.exceptions import SummaryGenerationError, APIRateLimitError, APIKeyExhaustedError
+
+logger = get_logger("ai_summary_service")
+
 
 class AISummaryService:
     """Service for generating AI-powered article summaries using Google Gemini with API key rotation."""
@@ -175,7 +180,7 @@ Use ONLY: <b>, </b>, •, and emojis."""
         """Rotate to the next API key in the list."""
         if len(self.api_keys) > 1:
             self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
-            print(f"🔄 Rotated to API key #{self.current_key_index + 1}/{len(self.api_keys)}")
+            logger.info(f"🔄 Rotated to API key #{self.current_key_index + 1}/{len(self.api_keys)}")
     
     def generate_summary(
         self, 
@@ -199,8 +204,13 @@ Use ONLY: <b>, </b>, •, and emojis."""
             
         Returns:
             Generated summary text or None if all models fail
+            
+        Raises:
+            SummaryGenerationError: If summary generation fails completely
+            APIRateLimitError: If rate limited
+            APIKeyExhaustedError: If all API keys are exhausted
         """
-        print(f"🤖 Generating AI summary with Gemini (using {len(self.api_keys)} API key(s))...")
+        logger.info(f"🤖 Generating AI summary with Gemini (using {len(self.api_keys)} API key(s))...")
         
         # Track consecutive failures across all keys and models
         consecutive_failures = 0
@@ -208,7 +218,7 @@ Use ONLY: <b>, </b>, •, and emojis."""
         
         # Try each free tier model until success
         for model_idx, model_name in enumerate(self.free_tier_models, 1):
-            print(f"\n🔄 Trying model {model_idx}/{len(self.free_tier_models)}: {model_name}")
+            logger.info(f"\n🔄 Trying model {model_idx}/{len(self.free_tier_models)}: {model_name}")
             
             # Try each API key for this model
             keys_tried = 0
@@ -227,32 +237,32 @@ Use ONLY: <b>, </b>, •, and emojis."""
                         )
                         
                         if summary:
-                            print(f"✅ Summary generated with {model_name} (API key #{self.current_key_index + 1}): {len(summary)} characters")
+                            logger.info(f"✅ Summary generated with {model_name} (API key #{self.current_key_index + 1}): {len(summary)} characters")
                             return summary
                         
                     except Exception as e:
                         error_msg = str(e)
-                        print(f"❌ {model_name} (API key #{self.current_key_index + 1}) error (Attempt {attempt}/{max_retries_per_model}): {error_msg}")
+                        logger.warning(f"❌ {model_name} (API key #{self.current_key_index + 1}) error (Attempt {attempt}/{max_retries_per_model}): {error_msg}")
                         
                         # Check for rate limit or unavailable errors
                         if any(code in error_msg for code in ["503", "429", "UNAVAILABLE", "high demand", "quota", "RESOURCE_EXHAUSTED"]):
                             consecutive_failures += 1
                             
                             if attempt < max_retries_per_model:
-                                print(f"⏳ Retrying with same key in {retry_delay}s...")
+                                logger.info(f"⏳ Retrying with same key in {retry_delay}s...")
                                 time.sleep(retry_delay)
                                 continue
                             else:
                                 # Try next API key if available
                                 if len(self.api_keys) > 1 and keys_tried < len(self.api_keys) - 1:
-                                    print(f"⏭️ Switching to next API key after {retry_delay}s delay...")
+                                    logger.info(f"⏭️ Switching to next API key after {retry_delay}s delay...")
                                     self._rotate_api_key()
                                     keys_tried += 1
                                     time.sleep(retry_delay)
                                     break
                                 else:
                                     # Move to next model
-                                    print(f"⏭️ All API keys exhausted for {model_name}, switching to next model...")
+                                    logger.info(f"⏭️ All API keys exhausted for {model_name}, switching to next model...")
                                     time.sleep(retry_delay)
                                     break
                         else:
@@ -273,11 +283,11 @@ Use ONLY: <b>, </b>, •, and emojis."""
             
             # Check if we should give up entirely
             if consecutive_failures >= max_consecutive_failures:
-                print(f"❌ Too many consecutive failures ({consecutive_failures}). Aborting.")
-                break
+                logger.error(f"❌ Too many consecutive failures ({consecutive_failures}). Aborting.")
+                raise APIKeyExhaustedError(f"All {max_consecutive_failures} attempts failed")
         
-        print(f"❌ All models and API keys exhausted. Skipping this article.")
-        return None
+        logger.error(f"❌ All models and API keys exhausted. Skipping this article.")
+        raise SummaryGenerationError("All models and API keys exhausted")
     
     def generate_summary_from_facts(
         self,

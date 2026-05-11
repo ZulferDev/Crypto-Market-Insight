@@ -26,39 +26,48 @@ from services.quality import QualityService
 from services.image import ImageExtractionService
 from services.telegram import TelegramService
 from services.dedup import ClusterManager
+from utils.logger import get_logger, setup_logging
+from utils.exceptions import ConfigurationError
+from models import ProcessedArticle as ProcessedArticleModel, PipelineStats
+
+logger = get_logger("main")
 
 
 def main():
     """Main workflow: fetch, filter, deduplicate, summarize, and post crypto news."""
-    print_header("🚀 High-Signal Crypto Intelligence Pipeline")
+    setup_logging()
+    logger.info("🚀 High-Signal Crypto Intelligence Pipeline started")
+    logger.info("=" * 60)
+    logger.info(f"⏰ Time: {datetime.now().isoformat()}")
+    logger.info("=" * 60)
     
     # Validate configuration
     try:
         validate_config()
     except ValueError as e:
-        print(f"❌ Configuration error: {e}")
-        sys.exit(1)
+        logger.error(f"❌ Configuration error: {e}", exc_info=True)
+        raise ConfigurationError(f"Configuration validation failed: {e}") from e
 
     # Initialize services
     services = initialize_services()
     
     # Load processed articles
     processed_data = services['storage'].load_processed_data()
-    print(f"📋 Loaded {len(processed_data)} previously processed articles")
+    logger.info(f"📋 Loaded {len(processed_data)} previously processed articles")
 
     # Fetch articles from all RSS feeds
     rss_feed_urls = get_rss_feed_urls()
-    print(f"📡 Configured RSS feeds: {len(rss_feed_urls)}")
+    logger.info(f"📡 Configured RSS feeds: {len(rss_feed_urls)}")
     
     all_articles = fetch_all_articles(services['rss'], rss_feed_urls)
-    print(f"✅ Total articles fetched: {len(all_articles)}")
+    logger.info(f"✅ Total articles fetched: {len(all_articles)}")
 
     # Filter new articles (skip already processed)
     new_articles = filter_new_articles(all_articles, services['storage'], processed_data)
-    print(f"🆕 Found {len(new_articles)} new articles to process")
+    logger.info(f"🆕 Found {len(new_articles)} new articles to process")
 
     if not new_articles:
-        print("✅ No new articles to process. Exiting.")
+        logger.info("✅ No new articles to process. Exiting.")
         return
 
     # Process articles with deduplication
@@ -89,9 +98,10 @@ def fetch_all_articles(rss_service: RSSFeedService, feed_urls: list) -> list:
     """Fetch articles from all RSS feeds."""
     all_articles = []
     for feed_url in feed_urls:
-        print(f"\n📰 Processing: {feed_url}")
+        logger.info(f"📰 Processing feed: {feed_url}")
         articles = rss_service.fetch_feed(feed_url)
         all_articles.extend(articles)
+        logger.debug(f"Fetched {len(articles)} articles from {feed_url}")
     return all_articles
 
 
@@ -119,13 +129,13 @@ def process_articles(articles: list, services: dict, processed_data: set) -> dic
     }
     
     for i, article in enumerate(articles, 1):
-        print(f"\n{'='*60}")
-        print(f"📄 Article {i}/{len(articles)}: {article.title[:60]}...")
-        print(f"{'='*60}")
+        logger.info("=" * 60)
+        logger.info(f"📄 Article {i}/{len(articles)}: {article.title[:60]}...")
+        logger.info("=" * 60)
 
         # Skip if no link
         if not article.link:
-            print("⚠️ Skipping: No link")
+            logger.warning("⚠️ Skipping: No link")
             continue
 
         # Extract image
@@ -134,7 +144,7 @@ def process_articles(articles: list, services: dict, processed_data: set) -> dic
         # STEP 1: Extract content
         raw_content = services['content'].extract_content(article.link)
         if not raw_content:
-            print("⚠️ Skipping: Failed to extract content")
+            logger.warning("⚠️ Skipping: Failed to extract content")
             continue
 
         # STEP 2: Clean content
@@ -146,15 +156,15 @@ def process_articles(articles: list, services: dict, processed_data: set) -> dic
             content=cleaned_content
         )
         
-        print(f"   Score: {filter_result.score}/10 | Impact: {filter_result.market_impact}")
+        logger.info(f"   Score: {filter_result.score}/10 | Impact: {filter_result.market_impact}")
         
         if not filter_result.passed:
-            print(f"⚠️ FILTERED OUT: Score {filter_result.score} < 3")
+            logger.info(f"⚠️ FILTERED OUT: Score {filter_result.score} < 3")
             stats['filtered_out'] += 1
             continue
         
         stats['after_filter'] += 1
-        print(f"✅ PASSED FILTER")
+        logger.info(f"✅ PASSED FILTER")
 
         # STEP 4: Extract facts (LLM Pass #1)
         extraction_result = services['extraction'].extract_facts(
@@ -163,10 +173,10 @@ def process_articles(articles: list, services: dict, processed_data: set) -> dic
         )
         
         if not extraction_result:
-            print("⚠️ Skipping: Failed to extract facts")
+            logger.warning("⚠️ Skipping: Failed to extract facts")
             continue
         
-        print(f"   Facts: {len(extraction_result.facts)} | Entities: {len(extraction_result.entities)}")
+        logger.info(f"   Facts: {len(extraction_result.facts)} | Entities: {len(extraction_result.entities)}")
 
         # STEP 5: Deduplication
         cluster, is_new = services['dedup'].find_or_create_cluster(
@@ -179,11 +189,11 @@ def process_articles(articles: list, services: dict, processed_data: set) -> dic
         )
         
         if not is_new:
-            print(f"⏭️ DUPLICATE: Added to cluster {cluster.cluster_id}")
+            logger.info(f"⏭️ DUPLICATE: Added to cluster {cluster.cluster_id}")
             stats['duplicates'] += 1
             continue
         
-        print(f"✅ NEW CLUSTER: {cluster.cluster_id}")
+        logger.info(f"✅ NEW CLUSTER: {cluster.cluster_id}")
         article._cluster = cluster
 
         # STEP 6: Generate summary (LLM Pass #2)
@@ -200,7 +210,7 @@ def process_articles(articles: list, services: dict, processed_data: set) -> dic
 
         # Fallback to legacy method
         if not summary:
-            print("🔄 Falling back to legacy summary...")
+            logger.info("🔄 Falling back to legacy summary...")
             summary = services['ai'].generate_summary(
                 title=article.title,
                 content=cleaned_content,
@@ -209,14 +219,14 @@ def process_articles(articles: list, services: dict, processed_data: set) -> dic
             )
         
         if not summary:
-            print("⚠️ Skipping: All summary methods failed")
+            logger.warning("⚠️ Skipping: All summary methods failed")
             continue
 
         # STEP 7: Quality check
         quality_result = services['quality'].validate_summary(summary, mode="single")
         if not quality_result.passed:
             summary = services['quality'].polish_summary(summary)
-            print("✨ Applied polishing")
+            logger.info("✨ Applied polishing")
 
         # STEP 8: Send to Telegram
         telegram_message = services['telegram'].format_message(summary)
@@ -244,43 +254,36 @@ def process_articles(articles: list, services: dict, processed_data: set) -> dic
             services['storage'].add_article(processed_data, processed_article)
             stats['processed'] += 1
 
-            print(f"✅ SUCCESS: Sent to Telegram" + (" with image" if image_url else ""))
+            logger.info(f"✅ SUCCESS: Sent to Telegram" + (" with image" if image_url else ""))
 
             # Rate limiting
             if i < len(articles):
                 time.sleep(1)
         else:
-            print(f"❌ Failed to send: {article.title}")
+            logger.error(f"❌ Failed to send: {article.title}")
     
     return stats
 
 
 def print_summary(stats: dict, feeds: int, total_fetched: int, new_found: int, total_stored: int):
     """Print pipeline execution summary."""
-    print("\n" + "=" * 60)
-    print("📊 PIPELINE SUMMARY")
-    print("=" * 60)
-    print(f"RSS feeds: {feeds}")
-    print(f"Total fetched: {total_fetched}")
-    print(f"New found: {new_found}")
-    print(f"Before filter: {stats['before_filter']}")
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info("📊 PIPELINE SUMMARY")
+    logger.info("=" * 60)
+    logger.info(f"RSS feeds: {feeds}")
+    logger.info(f"Total fetched: {total_fetched}")
+    logger.info(f"New found: {new_found}")
+    logger.info(f"Before filter: {stats['before_filter']}")
     
     pass_rate = stats['after_filter'] / stats['before_filter'] * 100 if stats['before_filter'] > 0 else 0
-    print(f"After filter: {stats['after_filter']} ({pass_rate:.1f}% pass)")
-    print(f"Filtered out: {stats['filtered_out']}")
-    print(f"Duplicates: {stats['duplicates']}")
-    print(f"Processed: {stats['processed']}")
-    print(f"Total stored: {total_stored}")
-    print("=" * 60)
-    print("✅ Pipeline completed!")
-
-
-def print_header(title: str):
-    """Print formatted header."""
-    print("=" * 60)
-    print(title)
-    print(f"⏰ Time: {datetime.now().isoformat()}")
-    print("=" * 60)
+    logger.info(f"After filter: {stats['after_filter']} ({pass_rate:.1f}% pass)")
+    logger.info(f"Filtered out: {stats['filtered_out']}")
+    logger.info(f"Duplicates: {stats['duplicates']}")
+    logger.info(f"Processed: {stats['processed']}")
+    logger.info(f"Total stored: {total_stored}")
+    logger.info("=" * 60)
+    logger.info("✅ Pipeline completed!")
 
 
 if __name__ == "__main__":

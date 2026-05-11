@@ -2,19 +2,15 @@
 
 import json
 from typing import Dict, List, Optional
-from dataclasses import dataclass
 
 from google import genai
 from google.genai import types
 
+from utils.logger import get_logger
+from utils.exceptions import ExtractionError
+from models import ExtractionResult
 
-@dataclass
-class ExtractionResult:
-    """Result of fact extraction."""
-    facts: List[str]
-    entities: List[str]
-    market_impact_level: str  # "High", "Medium", "Low"
-    raw_json: str
+logger = get_logger("extraction_service")
 
 
 class ExtractionService:
@@ -91,24 +87,27 @@ class ExtractionService:
             
         Returns:
             ExtractionResult or None if extraction fails
+            
+        Raises:
+            ExtractionError: If extraction fails after all retries
         """
-        print(f"🧠 Extracting facts with Gemini (LLM Pass #1)...")
+        logger.info(f"🧠 Extracting facts with Gemini (LLM Pass #1)...")
         
         for attempt in range(1, max_retries + 1):
             try:
                 result = self._call_extraction_api(title, content)
                 if result:
-                    print(f"✅ Facts extracted: {len(result.facts)} facts, {len(result.entities)} entities")
+                    logger.info(f"✅ Facts extracted: {len(result.facts)} facts, {len(result.entities)} entities")
                     return result
             except Exception as e:
-                print(f"❌ Extraction attempt {attempt}/{max_retries} failed: {e}")
+                logger.warning(f"❌ Extraction attempt {attempt}/{max_retries} failed: {e}")
                 if attempt < max_retries:
                     self._rotate_api_key()
                     import time
                     time.sleep(1.0)
         
-        print("⚠️ Fact extraction failed after all retries")
-        return None
+        logger.error("⚠️ Fact extraction failed after all retries")
+        raise ExtractionError("Fact extraction failed after all retries")
     
     def _call_extraction_api(self, title: str, content: str) -> Optional[ExtractionResult]:
         """Call Gemini API for fact extraction."""
