@@ -8,6 +8,7 @@ Workflow: RSS → Content → Clean → Filter → Extract → Dedup → Summari
 
 import sys
 import time
+import hashlib
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
@@ -223,13 +224,15 @@ def process_articles(articles: list, services: dict, processed_data: set) -> dic
 
         if success:
             # Save processed article
+            content_hash = hashlib.sha256(cleaned_content.encode('utf-8')).hexdigest()
             processed_article = ProcessedArticle(
                 link=article.link,
                 title=article.title,
                 summary=summary,
                 processed_at=datetime.now().isoformat(),
                 author=article.author,
-                image_url=image_url or ""
+                image_url=image_url or "",
+                content_hash=content_hash,
             )
             
             # Store metadata

@@ -4,7 +4,6 @@ Centralized configuration management using environment variables
 """
 
 import os
-from pathlib import Path
 from typing import List
 
 
@@ -80,15 +79,8 @@ def get_rss_feed_urls() -> List[str]:
 
 
 # ==================== STORAGE CONFIGURATION ====================
-USE_GOOGLE_SHEETS = os.getenv("USE_GOOGLE_SHEETS", "false").lower() == "true"
-GOOGLE_SHEETS_ID = os.getenv("GOOGLE_SHEETS_ID", "")  # Legacy: for google-api-python-client
-GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", GOOGLE_SHEETS_ID)  # New: for gspread
-GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
-GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")  # JSON string for GitHub Actions
-
-# Local JSON fallback
-PROCESSED_LINKS_FILE = os.getenv("PROCESSED_LINKS_FILE", "processed_links.json")
-
+CLOUDFLARE_WORKER_URL = os.getenv("CLOUDFLARE_WORKER_URL", "")
+CLOUDFLARE_WORKER_API_KEY = os.getenv("CLOUDFLARE_WORKER_API_KEY", "")
 
 # ==================== PROCESSING LIMITS ====================
 MAX_ARTICLES_PER_RUN = int(os.getenv("MAX_ARTICLES_PER_RUN", "5"))
@@ -97,16 +89,6 @@ SUMMARY_MAX_LENGTH = int(os.getenv("SUMMARY_MAX_LENGTH", "1500"))  # Karakter ma
 
 # ==================== API KEYS FOR EXTERNAL SERVICES ====================
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
-
-
-def is_google_sheets_enabled():
-    """Check if Google Sheets storage is enabled and available."""
-    return USE_GOOGLE_SHEETS and GOOGLE_SHEETS_ID
-
-
-def get_service_account_path():
-    """Get the full path to the service account file."""
-    return Path(GOOGLE_SERVICE_ACCOUNT_FILE)
 
 
 def validate_config():
@@ -134,7 +116,7 @@ def validate_config():
     if not api_keys:
         raise ValueError("At least one Gemini API key must be provided (GEMINI_API_KEYS or GEMINI_API_KEY)")
     
-    if USE_GOOGLE_SHEETS and not GOOGLE_SHEETS_ID:
-        raise ValueError("GOOGLE_SHEETS_ID is required when USE_GOOGLE_SHEETS is true")
+    if not CLOUDFLARE_WORKER_URL:
+        raise ValueError("CLOUDFLARE_WORKER_URL is required for Cloudflare D1 storage")
     
     return True
