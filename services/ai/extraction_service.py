@@ -193,7 +193,6 @@ Extract facts now following the exact JSON schema above."""
                 facts=cleaned_facts[:5],
                 entities=list(set(entities))[:10],  # Dedupe entities
                 market_impact_level=impact,
-                raw_json=response.text
             )
             
         except json.JSONDecodeError as e:
