@@ -45,3 +45,4 @@ ENV/
 coverage/
 htmlcov/
 ```
+.cloudflare

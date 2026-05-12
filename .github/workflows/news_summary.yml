@@ -34,16 +34,20 @@ jobs:
 
       - name: Run news summary script
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}  # Comma-separated list of API keys (recommended)
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}  # Fallback for single key (deprecated)
-          RSS_FEED_URLS: ${{ secrets.RSS_FEED_URLS }}  # Comma-separated list of RSS feeds (recommended)
-          RSS_FEED_URL: ${{ secrets.RSS_FEED_URL }}  # Fallback for single feed (deprecated)
-          USE_GOOGLE_SHEETS: ${{ secrets.USE_GOOGLE_SHEETS || 'false' }}
-          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-          MAX_ARTICLES_PER_RUN: ${{ secrets.MAX_ARTICLES_PER_RUN || '5' }}
+          TELEGRAM_BOT_TOKEN: ${{ github.event.client_payload.telegram_bot_token || secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ github.event.client_payload.telegram_channel_id || secrets.TELEGRAM_CHANNEL_ID }}
+          GEMINI_API_KEYS: ${{ github.event.client_payload.gemini_api_keys || secrets.GEMINI_API_KEYS }}  # Comma-separated list of API keys (recommended)
+          GEMINI_API_KEY: ${{ github.event.client_payload.gemini_api_key || secrets.GEMINI_API_KEY }}  # Fallback for single key (deprecated)
+          RSS_FEED_URLS: ${{ github.event.client_payload.rss_feed_urls || secrets.RSS_FEED_URLS }}  # Comma-separated list of RSS feeds (recommended)
+          RSS_FEED_URL: ${{ github.event.client_payload.rss_feed_url || secrets.RSS_FEED_URL }}  # Fallback for single feed (deprecated)
+          CLOUDFLARE_WORKER_URL: ${{ github.event.client_payload.cloudflare_worker_url || secrets.CLOUDFLARE_WORKER_URL }}
+          CLOUDFLARE_WORKER_API_KEY: ${{ github.event.client_payload.cloudflare_worker_api_key || secrets.CLOUDFLARE_WORKER_API_KEY }}
+          SUMMARY_MAX_LENGTH: ${{ github.event.client_payload.summary_max_length || secrets.SUMMARY_MAX_LENGTH || '1500' }}
+          TAVILY_API_KEY: ${{ github.event.client_payload.tavily_api_key || secrets.TAVILY_API_KEY }}
+          USE_GOOGLE_SHEETS: ${{ github.event.client_payload.use_google_sheets || secrets.USE_GOOGLE_SHEETS || 'false' }}
+          GOOGLE_SHEET_ID: ${{ github.event.client_payload.google_sheet_id || secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ github.event.client_payload.google_service_account_json || secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          MAX_ARTICLES_PER_RUN: ${{ github.event.client_payload.max_articles_per_run || secrets.MAX_ARTICLES_PER_RUN || '5' }}
         run: python main.py
 
       - name: Upload logs as artifact

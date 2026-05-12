@@ -34,11 +34,6 @@ class QualityService:
         "scoop", "impact", "why it matters", "key points", "tl;dr"
     ]
     
-    # Required sections for daily recap format
-    REQUIRED_SECTIONS_DAILY = [
-        "tl;dr", "market overview", "key data", "strategic take", "sentiment"
-    ]
-    
     # Word count limits
     MIN_WORD_COUNT = 50
     MAX_WORD_COUNT = 200  # For sharp, compressed output
@@ -53,7 +48,7 @@ class QualityService:
         
         Args:
             summary: The generated summary text
-            mode: "single" for single news, "daily" for daily recap
+            mode: "single" for single news
             
         Returns:
             QualityResult with validation details
@@ -77,7 +72,7 @@ class QualityService:
             issues.append(f"Contains vague language: {', '.join(weak_found[:3])}")
         
         # Check required sections
-        required = self.REQUIRED_SECTIONS_SINGLE if mode == "single" else self.REQUIRED_SECTIONS_DAILY
+        required = self.REQUIRED_SECTIONS_SINGLE
         missing_sections = self._check_required_sections(summary, required)
         if missing_sections:
             issues.append(f"Missing sections: {', '.join(missing_sections)}")

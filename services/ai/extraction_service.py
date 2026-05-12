@@ -52,9 +52,16 @@ class ExtractionService:
 
 **Output JSON Schema:**
 {
-  "facts": ["fact1", "fact2", ...],  // max 5, each <15 words
-  "entities": ["entity1", "entity2", ...],  // companies, people, protocols
-  "market_impact_level": "High|Medium|Low"  // based on factual impact
+  "facts": [
+    {
+      "description": "string", // max 15 words
+      "category": "Regulatory|Inflow|Exploit|Macro",
+      "impact_weight": 1-10
+    }
+  ],
+  "entities": ["string"],
+  "market_impact_level": "High|Medium|Low",
+  "is_volatility_trigger": "boolean" // Apakah berita ini bisa memicu pergerakan instan?
 }
 
 **Examples of GOOD facts:**

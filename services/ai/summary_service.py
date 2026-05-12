@@ -48,8 +48,8 @@ class AISummaryService:
         ]
         
         # Tuned parameters for consistent, sharp output
-        self.temperature = 0.45
-        self.top_p = 0.9
+        self.temperature = 0.2
+        self.top_p = 0.8
         self.top_k = 40
         
         # NEW: Summary prompt for facts-based input (LLM Pass #2) - STANDARDIZED
@@ -57,7 +57,7 @@ class AISummaryService:
 
 **Task:** Transform extracted facts into a sharp, trader-focused intelligence brief.
 
-**Input:** You will receive pre-extracted FACTS (not raw article). Your job is to synthesize them.
+**Input:** You will receive a list of JSON objects containing fact descriptions and impact weights. Use the weights to prioritize the headline. Your job is to synthesize them.
 
 PRIMARY GOAL:
 - Fast to scan (<10 seconds)
@@ -111,66 +111,6 @@ STYLE LOCK:
 OUTPUT MUST BE HTML-FORMATTED FOR TELEGRAM.
 Use ONLY: <b>, </b>, •, and emojis.
 DO NOT use Markdown or <pre> tags."""
-
-        # Daily recap prompt - STANDARDIZED
-        self.daily_recap_prompt = """**Role:** Crypto Intelligence Chief Strategist
-
-**Task:** Synthesize top 5-10 filtered articles into a daily intelligence briefing.
-
-**Audience:** Active crypto traders who need actionable insights in <10 seconds.
-
-PRIMARY GOAL:
-- Compress multiple signals into one clear stance
-- Maintain consistent structure daily
-- No long paragraphs, no storytelling
-
----
-
-OUTPUT STRUCTURE (MANDATORY):
-
-<b>📅 {date}</b>
-
-<b>⚡ TL;DR:</b>
-• Macro driver: [1 fact]
-• Biggest risk: [1 fact]
-• Market condition: [1 fact]
-• Final stance: [Bullish/Bearish/Neutral]
-
----
-
-<b>🧠 MARKET OVERVIEW:</b>
-(3–5 sentences max)
-Connect the dots between events. No fluff.
-
----
-
-<b>📊 KEY DATA:</b>
-• [metric + implication]
-• [metric + implication]
-• [metric + implication]
-
----
-
-<b>🎯 STRATEGIC TAKE:</b>
-(2–3 sentences)
-One actionable insight. What should traders DO?
-
----
-
-<b>🟡 SENTIMENT:</b>
-[Bullish / Bearish / Mixed] + [one-word reason]
-
----
-
-STYLE RULES:
-- NO generic phrases ("volatile market", "uncertain times")
-- NO hedging ("may", "could", "might")
-- Numbers first, always
-- Always include clear stance
-- Maximum 250 words total
-
-OUTPUT MUST BE HTML FORMAT.
-Use ONLY: <b>, </b>, •, and emojis."""
     
     def _get_current_api_key(self) -> str:
         """Get the current API key from the rotation list."""
@@ -452,118 +392,6 @@ Generate the intelligence brief now following the exact format above."""
         # Truncate if too long
         if len(summary) > 1000:
             summary = summary[:950] + "\n\n<i>(truncated)</i>"
-        
-        return summary if summary else None
-    
-    def generate_daily_recap(
-        self,
-        articles: list[dict],
-        max_retries: int = 3
-    ) -> Optional[str]:
-        """
-        Generate daily recap from multiple filtered articles.
-        
-        Args:
-            articles: List of dicts with 'facts', 'entities', 'market_impact', 'title'
-            max_retries: Maximum retry attempts
-            
-        Returns:
-            Daily recap summary or None
-        """
-        from datetime import datetime
-        
-        print(f"📅 Generating daily recap from {len(articles)} articles...")
-        
-        for attempt in range(1, max_retries + 1):
-            try:
-                result = self._generate_daily_recap_api(articles)
-                if result:
-                    print(f"✅ Daily recap generated: {len(result)} characters")
-                    return result
-            except Exception as e:
-                print(f"❌ Daily recap attempt {attempt}/{max_retries} failed: {e}")
-                if attempt < max_retries:
-                    self._rotate_api_key()
-                    time.sleep(1.0)
-        
-        return None
-    
-    def _generate_daily_recap_api(self, articles: list[dict]) -> Optional[str]:
-        """Call Gemini API to generate daily recap."""
-        api_key = self._get_current_api_key()
-        genai_client = genai.Client(api_key=api_key)
-        
-        # Aggregate facts from all articles
-        all_facts = []
-        all_entities = set()
-        high_impact_count = 0
-        
-        for article in articles:
-            facts = article.get('facts', [])
-            entities = article.get('entities', [])
-            impact = article.get('market_impact', 'Medium')
-            
-            all_facts.extend(facts[:3])  # Take top 3 facts per article
-            all_entities.update(entities)
-            if impact == "High":
-                high_impact_count += 1
-        
-        date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-        
-        facts_text = "\n".join(f"- {fact}" for fact in all_facts[:15])
-        entities_text = ", ".join(list(all_entities)[:10])
-        
-        user_content = f"""**Date:** {date_str}
-
-**Aggregated Facts from Top Articles:**
-{facts_text}
-
-**Key Entities:** {entities_text}
-
-**High Impact Stories:** {high_impact_count}
-
----
-Generate the daily intelligence briefing now following the exact format above."""
-        
-        generate_config = types.GenerateContentConfig(
-            temperature=self.temperature,
-            top_p=self.top_p,
-            top_k=self.top_k,
-            response_mime_type="application/json",
-            response_schema=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "response": types.Schema(type=types.Type.STRING),
-                },
-            ),
-            system_instruction=[
-                types.Part.from_text(text=self.daily_recap_prompt.format(date=date_str)),
-            ],
-        )
-        
-        contents = [
-            types.Content(
-                role="user",
-                parts=[
-                    types.Part.from_text(text=user_content),
-                ],
-            ),
-        ]
-        
-        response = genai_client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents=contents,
-            config=generate_config,
-        )
-        
-        if not response or not response.text:
-            return None
-        
-        try:
-            data = json_lib.loads(response.text)
-            summary = data.get("response", response.text)
-        except:
-            summary = response.text
         
         return summary if summary else None
     
