@@ -38,13 +38,50 @@ class AISummaryService:
         # Free tier models for fallback
         self.free_tier_models = [
             "gemma-4-31b-it",
-            "gemma-4-26b-a4b-it"
+            "gemma-4-26b-a4b-it", 
+            "gemini-3.1-flash-lite-preview",
+            "gemini-2.5-flash-lite",
+            "gemini-2.0-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-3-flash-preview"
         ]
         
         # Tuned parameters for consistent, sharp output
         self.temperature = 0.2
         self.top_p = 0.8
         self.top_k = 40
+        
+        # Summary prompt for raw content input (LLM Pass #1) - Direct from article
+        self.system_instruction = """**Role:** Crypto Intelligence Analyst - Live News Summarizer
+
+**Task:** Extract and synthesize the MOST IMPORTANT market-moving information from news articles.
+
+**Primary Goal:**
+- Create trader-ready intelligence briefs
+- Focus on signal, not noise
+- Maximum impact in minimum words
+
+**HARD RULES:**
+- No speculation or hedging ("could", "may", "might")
+- No background information
+- NO generic market commentary
+- Be specific about: amounts, percentages, dates, entities
+- Avoid fluff phrases
+
+**Output Structure (HTML for Telegram):**
+
+<b>🚨 [HEADLINE with NUMBER or CONFLICT]</b>
+
+• <b>What happened:</b> (1-2 sentences, max 30 words)
+• <b>Impact:</b> (🟢 positive / 🔴 negative / 🟡 neutral)
+• <b>Key detail:</b> (Most critical number/fact, max 15 words)
+• <b>Market move:</b> (Expected trader reaction, max 15 words)
+
+---
+
+TONE: Assertive, Sharp, Professional
+FORMAT: HTML only - <b>, </b>, •, emojis. NO Markdown."""
         
         # NEW: Summary prompt for facts-based input (LLM Pass #2) - STANDARDIZED
         self.facts_summary_prompt = """**Role:** Crypto Intelligence Editor - Final Summary Generator
@@ -418,7 +455,7 @@ Generate the intelligence brief now following the exact format above."""
         # Prepare content for input
         user_content = f"""**News Title:** {title}
 **Author:** {author}
-**Source:** {primary_source}
+**Source:** {source_url}
 
 **Full Content:**
 {content[:15000]}  # Limit konten untuk menghindari token limit
@@ -427,16 +464,16 @@ Generate the intelligence brief now following the exact format above."""
 
 Generate the summary now following the exact structure above. Ensure the source link at the end uses the Source URL provided."""
         
-        # Configure generate content with TUNED parameters (not 0.8)
-        generate_config = types.GenerateContentConfig(
-            temperature=self.temperature,  # 0.5 for consistent output
-            top_p=self.top_p,  # 0.9
-            top_k=self.top_k,  # 50
-            thinking_config=types.ThinkingConfig(
-                thinking_level="MINIMAL",
-            ),
-            response_mime_type="application/json",
-            response_schema=genai.types.Schema(
+        # Determine if model is Gemma or Gemini
+        is_gemma_model = "gemma" in model_name.lower()
+        
+        # Base configuration for all models
+        base_config = {
+            "temperature": self.temperature,  # 0.5 for consistent output
+            "top_p": self.top_p,  # 0.9
+            "top_k": self.top_k,  # 50
+            "response_mime_type": "application/json",
+            "response_schema": genai.types.Schema(
                 type=genai.types.Type.OBJECT,
                 properties={
                     "response": genai.types.Schema(
@@ -444,10 +481,20 @@ Generate the summary now following the exact structure above. Ensure the source 
                     ),
                 },
             ),
-            system_instruction=[
+            "system_instruction": [
                 types.Part.from_text(text=self.system_instruction),
             ],
-        )
+        }
+        
+        # Add thinking_config only for Gemma models
+        if is_gemma_model:
+            base_config["thinking_config"] = types.ThinkingConfig(
+                thinking_level="MINIMAL",
+            )
+            logger.info(f"ℹ️ Using Gemma model with MINIMAL thinking level")
+        
+        # Create generate config with appropriate settings
+        generate_config = types.GenerateContentConfig(**base_config)
         
         # Prepare contents
         contents = [

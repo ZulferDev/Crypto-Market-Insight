@@ -1,13 +1,14 @@
 """Extraction Service - LLM-based fact extraction from articles"""
 
 import json
+import time
 from typing import Dict, List, Optional
 
 from google import genai
 from google.genai import types
 
 from utils.logger import get_logger
-from utils.exceptions import ExtractionError
+from utils.exceptions import ExtractionError, APIKeyExhaustedError
 from models import ExtractionResult
 
 logger = get_logger("extraction_service")
@@ -33,6 +34,18 @@ class ExtractionService:
             raise ValueError("No API keys provided for extraction service")
         
         self.current_key_index = 0
+        
+        # Free tier models for fallback
+        self.free_tier_models = [
+            "gemma-4-31b-it",
+            "gemma-4-26b-a4b-it", 
+            "gemini-3.1-flash-lite-preview",
+            "gemini-2.5-flash-lite",
+            "gemini-2.0-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-3-flash-preview"
+        ]
         
         # Tuned parameters for consistent, sharp output
         self.temperature = 0.5
@@ -83,42 +96,113 @@ class ExtractionService:
         if len(self.api_keys) > 1:
             self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
     
-    def extract_facts(self, title: str, content: str, max_retries: int = 3) -> Optional[ExtractionResult]:
+    def extract_facts(self, title: str, content: str, max_retries_per_model: int = 3, retry_delay: float = 1.0) -> Optional[ExtractionResult]:
         """
-        Extract structured facts from article content.
+        Extract structured facts from article content with model fallback and API key rotation.
         
         Args:
             title: Article title
             content: Article content (already cleaned)
-            max_retries: Maximum retry attempts
+            max_retries_per_model: Maximum retry attempts per model
+            retry_delay: Delay between retries in seconds
             
         Returns:
             ExtractionResult or None if extraction fails
             
         Raises:
-            ExtractionError: If extraction fails after all retries
+            ExtractionError: If extraction fails after all models and API keys are exhausted
+            APIKeyExhaustedError: If all API keys are exhausted
         """
-        logger.info(f"🧠 Extracting facts with Gemini (LLM Pass #1)...")
+        logger.info(f"🧠 Extracting facts with Gemini (LLM Pass #1, using {len(self.api_keys)} API key(s))...")
         
-        for attempt in range(1, max_retries + 1):
-            try:
-                result = self._call_extraction_api(title, content)
-                if result:
-                    logger.info(f"✅ Facts extracted: {len(result.facts)} facts, {len(result.entities)} entities")
-                    return result
-            except Exception as e:
-                logger.warning(f"❌ Extraction attempt {attempt}/{max_retries} failed: {e}")
-                if attempt < max_retries:
-                    self._rotate_api_key()
-                    import time
-                    time.sleep(1.0)
+        # Track consecutive failures across all keys and models
+        consecutive_failures = 0
+        max_consecutive_failures = len(self.api_keys) * len(self.free_tier_models)
         
-        logger.error("⚠️ Fact extraction failed after all retries")
-        raise ExtractionError("Fact extraction failed after all retries")
+        # Try each free tier model until success
+        for model_idx, model_name in enumerate(self.free_tier_models, 1):
+            logger.info(f"\n🔄 Trying model {model_idx}/{len(self.free_tier_models)}: {model_name}")
+            
+            # Try each API key for this model
+            keys_tried = 0
+            while keys_tried < len(self.api_keys):
+                current_key = self._get_current_api_key()
+                
+                for attempt in range(1, max_retries_per_model + 1):
+                    try:
+                        result = self._call_extraction_api(
+                            api_key=current_key,
+                            model_name=model_name,
+                            title=title,
+                            content=content
+                        )
+                        
+                        if result:
+                            logger.info(f"✅ Facts extracted with {model_name} (API key #{self.current_key_index + 1}): {len(result.facts)} facts, {len(result.entities)} entities")
+                            return result
+                        
+                    except Exception as e:
+                        error_msg = str(e)
+                        logger.warning(f"❌ {model_name} (API key #{self.current_key_index + 1}) error (Attempt {attempt}/{max_retries_per_model}): {error_msg}")
+                        
+                        # Check for rate limit or unavailable errors
+                        if any(code in error_msg for code in ["503", "429", "UNAVAILABLE", "high demand", "quota", "RESOURCE_EXHAUSTED"]):
+                            consecutive_failures += 1
+                            
+                            if attempt < max_retries_per_model:
+                                logger.info(f"⏳ Retrying with same key in {retry_delay}s...")
+                                time.sleep(retry_delay)
+                                continue
+                            else:
+                                # Try next API key if available
+                                if len(self.api_keys) > 1 and keys_tried < len(self.api_keys) - 1:
+                                    logger.info(f"⏭️ Switching to next API key after {retry_delay}s delay...")
+                                    self._rotate_api_key()
+                                    keys_tried += 1
+                                    time.sleep(retry_delay)
+                                    break
+                                else:
+                                    # Move to next model
+                                    logger.info(f"⏭️ All API keys exhausted for {model_name}, switching to next model...")
+                                    time.sleep(retry_delay)
+                                    break
+                        else:
+                            # Non-retryable error, try next key or model
+                            consecutive_failures += 1
+                            if len(self.api_keys) > 1 and keys_tried < len(self.api_keys) - 1:
+                                self._rotate_api_key()
+                                keys_tried += 1
+                                time.sleep(retry_delay)
+                                break
+                            else:
+                                time.sleep(retry_delay)
+                                break
+                
+                # If we've tried all keys for this model without success, move to next model
+                if keys_tried >= len(self.api_keys) - 1 or len(self.api_keys) == 1:
+                    break
+            
+            # Check if we should give up entirely
+            if consecutive_failures >= max_consecutive_failures:
+                logger.error(f"❌ Too many consecutive failures ({consecutive_failures}). Aborting.")
+                raise APIKeyExhaustedError(f"All {max_consecutive_failures} attempts failed")
+        
+        logger.error(f"❌ All models and API keys exhausted. Skipping this article.")
+        raise ExtractionError("All models and API keys exhausted")
     
-    def _call_extraction_api(self, title: str, content: str) -> Optional[ExtractionResult]:
-        """Call Gemini API for fact extraction."""
-        api_key = self._get_current_api_key()
+    def _call_extraction_api(self, api_key: str, model_name: str, title: str, content: str) -> Optional[ExtractionResult]:
+        """
+        Call Gemini API for fact extraction with specified model and API key.
+        
+        Args:
+            api_key: API key to use for this request
+            model_name: Model identifier
+            title: Article title
+            content: Article content
+            
+        Returns:
+            ExtractionResult or None
+        """
         genai_client = genai.Client(api_key=api_key)
         
         user_content = f"""**Article Title:** {title}
@@ -129,18 +213,29 @@ class ExtractionService:
 ---
 Extract facts now following the exact JSON schema above."""
         
-        # Configure with tuned parameters
-        generate_config = types.GenerateContentConfig(
-            temperature=self.temperature,
-            top_p=self.top_p,
-            top_k=self.top_k,
-            response_mime_type="application/json",
-            response_schema=types.Schema(
+        # Determine if model is Gemma or Gemini
+        is_gemma_model = "gemma" in model_name.lower()
+        
+        # Base configuration for all models
+        base_config = {
+            "temperature": self.temperature,
+            "top_p": self.top_p,
+            "top_k": self.top_k,
+            "response_mime_type": "application/json",
+            "response_schema": types.Schema(
                 type=types.Type.OBJECT,
                 properties={
                     "facts": types.Schema(
                         type=types.Type.ARRAY,
-                        items=types.Schema(type=types.Type.STRING),
+                        items=types.Schema(
+                            type=types.Type.OBJECT,
+                            properties={
+                                "description": types.Schema(type=types.Type.STRING),
+                                "category": types.Schema(type=types.Type.STRING),
+                                "impact_weight": types.Schema(type=types.Type.INTEGER),
+                            },
+                            required=["description", "category", "impact_weight"],
+                        ),
                     ),
                     "entities": types.Schema(
                         type=types.Type.ARRAY,
@@ -153,10 +248,20 @@ Extract facts now following the exact JSON schema above."""
                 },
                 required=["facts", "entities", "market_impact_level"],
             ),
-            system_instruction=[
+            "system_instruction": [
                 types.Part.from_text(text=self.extraction_prompt),
             ],
-        )
+        }
+        
+        # Add thinking_config only for Gemma models
+        if is_gemma_model:
+            base_config["thinking_config"] = types.ThinkingConfig(
+                thinking_level="MINIMAL",
+            )
+            logger.info(f"ℹ️ Using Gemma model with MINIMAL thinking level")
+        
+        # Create generate config with appropriate settings
+        generate_config = types.GenerateContentConfig(**base_config)
         
         contents = [
             types.Content(
@@ -169,7 +274,7 @@ Extract facts now following the exact JSON schema above."""
         
         # Generate response
         response = genai_client.models.generate_content(
-            model="gemini-2.5-flash-lite",
+            model=model_name,
             contents=contents,
             config=generate_config,
         )
@@ -180,13 +285,22 @@ Extract facts now following the exact JSON schema above."""
         # Parse JSON response
         try:
             data = json.loads(response.text)
-            facts = data.get("facts", [])[:5]  # Ensure max 5
+            facts_data = data.get("facts", [])[:5]  # Ensure max 5
             entities = data.get("entities", [])
             impact = data.get("market_impact_level", "Medium")
             
-            # Validate and clean facts
+            # Validate and clean facts from objects
             cleaned_facts = []
-            for fact in facts:
+            for fact_obj in facts_data:
+                # Extract description from object (or fallback to string if it's a string)
+                if isinstance(fact_obj, dict):
+                    fact = fact_obj.get("description", "")
+                else:
+                    fact = str(fact_obj)
+                
+                if not fact:
+                    continue
+                    
                 # Remove hedging language
                 fact = self._remove_hedging(fact)
                 # Truncate to 15 words
@@ -203,7 +317,7 @@ Extract facts now following the exact JSON schema above."""
             )
             
         except json.JSONDecodeError as e:
-            print(f"❌ JSON parse error: {e}")
+            logger.error(f"❌ JSON parse error: {e}")
             return None
     
     def _remove_hedging(self, text: str) -> str:
@@ -234,14 +348,17 @@ Extract facts now following the exact JSON schema above."""
         """
         results = []
         for i, article in enumerate(articles, 1):
-            print(f"\n📄 Extracting from article {i}/{len(articles)}...")
-            result = self.extract_facts(
-                title=article.get('title', ''),
-                content=article.get('content', '')
-            )
-            results.append(result)
+            logger.info(f"\n📄 Extracting from article {i}/{len(articles)}...")
+            try:
+                result = self.extract_facts(
+                    title=article.get('title', ''),
+                    content=article.get('content', '')
+                )
+                results.append(result)
+            except (ExtractionError, APIKeyExhaustedError) as e:
+                logger.error(f"❌ Extraction failed for article {i}: {e}")
+                results.append(None)
             # Rate limiting
             if i < len(articles):
-                import time
                 time.sleep(0.5)
         return results
