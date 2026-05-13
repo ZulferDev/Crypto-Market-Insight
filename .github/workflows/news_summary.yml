@@ -44,9 +44,6 @@ jobs:
           CLOUDFLARE_WORKER_API_KEY: ${{ github.event.client_payload.cloudflare_worker_api_key || secrets.CLOUDFLARE_WORKER_API_KEY }}
           SUMMARY_MAX_LENGTH: ${{ github.event.client_payload.summary_max_length || secrets.SUMMARY_MAX_LENGTH || '1500' }}
           TAVILY_API_KEY: ${{ github.event.client_payload.tavily_api_key || secrets.TAVILY_API_KEY }}
-          USE_GOOGLE_SHEETS: ${{ github.event.client_payload.use_google_sheets || secrets.USE_GOOGLE_SHEETS || 'false' }}
-          GOOGLE_SHEET_ID: ${{ github.event.client_payload.google_sheet_id || secrets.GOOGLE_SHEET_ID }}
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ github.event.client_payload.google_service_account_json || secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           MAX_ARTICLES_PER_RUN: ${{ github.event.client_payload.max_articles_per_run || secrets.MAX_ARTICLES_PER_RUN || '5' }}
         run: python main.py
 
